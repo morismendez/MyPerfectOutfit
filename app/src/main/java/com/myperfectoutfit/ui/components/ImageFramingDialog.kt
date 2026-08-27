@@ -3,12 +3,11 @@ package com.myperfectoutfit.ui.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.net.Uri
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -17,7 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,8 +38,12 @@ fun ImageFramingDialog(
 ) {
     val context = LocalContext.current
     val bitmap = remember(imageUri) {
-        val inputStream = context.contentResolver.openInputStream(imageUri)
-        BitmapFactory.decodeStream(inputStream)
+        try {
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+            BitmapFactory.decodeStream(inputStream)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     var scale by remember { mutableStateOf(1f) }
@@ -61,63 +67,84 @@ fun ImageFramingDialog(
                         .fillMaxWidth()
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
-                                scale *= zoom
+                                scale = (scale * zoom).coerceIn(0.5f, 5f)
                                 offset += pan
                             }
                         },
                     contentAlignment = Alignment.Center
                 ) {
                     if (bitmap != null) {
-                        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                            val circleRadius = size.minDimension / 2.5f
-                            val center = Offset(size.width / 2, size.height / 2)
-
-                            // Dibujar fondo oscuro semi-transparente
-                            drawRect(color = Color.Black.copy(alpha = 0.5f))
-
-                            // Recortar el círculo central
-                            val path = androidx.compose.ui.graphics.Path().apply {
-                                addOval(androidx.compose.ui.geometry.Rect(center, circleRadius))
-                            }
-
-                            clipPath(path, androidx.compose.ui.graphics.ClipOp.Difference) {
-                                drawRect(color = Color.Black.copy(alpha = 0.7f))
-                            }
-                        }
-
+                        // 1. La Imagen debajo
                         Box(
                             modifier = Modifier
-                                .size(300.dp) // Tamaño relativo de la ventana de encuadre
+                                .fillMaxSize()
                                 .graphicsLayer(
                                     scaleX = scale,
                                     scaleY = scale,
                                     translationX = offset.x,
                                     translationY = offset.y
-                                )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            androidx.compose.foundation.Image(
+                            Image(
                                 bitmap = bitmap.asImageBitmap(),
                                 contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.wrapContentSize()
+                            )
+                        }
+
+                        // 2. El Marco Guía encima (Overlay)
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val circleRadius = size.minDimension / 2.5f
+                            val center = Offset(size.width / 2, size.height / 2)
+
+                            // Recorte del círculo para oscurecer el exterior
+                            val path = Path().apply {
+                                addOval(androidx.compose.ui.geometry.Rect(center, circleRadius))
+                            }
+
+                            clipPath(path, clipOp = ClipOp.Difference) {
+                                drawRect(color = Color.Black.copy(alpha = 0.7f))
+                            }
+
+                            // Dibujar el borde blanco de la guía
+                            drawCircle(
+                                color = Color.White,
+                                radius = circleRadius,
+                                center = center,
+                                style = Stroke(width = 2.dp.toPx())
                             )
                         }
                     }
                 }
 
+                // Instrucciones rápidas
+                Text(
+                    text = "Usa dos dedos para ampliar y desliza para centrar",
+                    color = Color.White.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(bottom = 32.dp, start = 24.dp, end = 24.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
                         Text("Cancelar")
                     }
-                    Button(onClick = {
-                        val framedBitmap = cropCircle(bitmap!!, scale, offset)
-                        val framedUri = saveFramedImage(context, framedBitmap)
-                        if (framedUri != null) onImageFramed(framedUri)
-                    }) {
+                    Button(
+                        onClick = {
+                            bitmap?.let {
+                                val framedBitmap = cropCircle(it, scale, offset)
+                                val framedUri = saveFramedImage(context, framedBitmap)
+                                if (framedUri != null) onImageFramed(framedUri)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
                         Text("Aceptar")
                     }
                 }
@@ -127,34 +154,40 @@ fun ImageFramingDialog(
 }
 
 private fun cropCircle(bitmap: Bitmap, scale: Float, offset: Offset): Bitmap {
-    val size = 500 // Tamaño final de la foto de perfil
-    val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val outputSize = 500
+    val output = Bitmap.createBitmap(outputSize, outputSize, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(output)
 
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true
     }
 
-    // Dibujar círculo
+    // El resultado final siempre será un círculo sobre fondo transparente (o color de fondo de app)
     canvas.drawARGB(0, 0, 0, 0)
-    canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+    canvas.drawCircle(outputSize / 2f, outputSize / 2f, outputSize / 2f, paint)
 
     paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
 
-    // Calcular dimensiones de dibujo basadas en escala y offset
-    // Este es un cálculo simplificado para centrar el bitmap
-    val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
+    // Calculamos cómo dibujar el bitmap para que coincida con lo que el usuario vio en la pantalla
+    // Esto requiere mapear el offset y la escala de la UI (basada en el tamaño del Box) 
+    // al tamaño real del bitmap.
     
-    // Ajustar según el centro
-    val scaledWidth = bitmap.width * scale
-    val scaledHeight = bitmap.height * scale
+    val matrix = android.graphics.Matrix()
     
-    val left = (size - scaledWidth) / 2 + offset.x
-    val top = (size - scaledHeight) / 2 + offset.y
-    val right = left + scaledWidth
-    val bottom = top + scaledHeight
+    // 1. Centrar el bitmap en el origen
+    matrix.postTranslate(-bitmap.width / 2f, -bitmap.height / 2f)
+    
+    // 2. Aplicar la escala
+    // Nota: El factor de escala en la UI es relativo al tamaño de visualización.
+    // Para simplificar, asumimos que el encuadre en UI es una representación proporcional.
+    matrix.postScale(scale, scale)
+    
+    // 3. Aplicar el desplazamiento (offset) y mover al centro del output
+    // El offset de Compose está en pixeles de pantalla, aquí lo aplicamos directamente 
+    // ajustado al centro de nuestro lienzo de 500x500.
+    matrix.postTranslate(outputSize / 2f + offset.x, outputSize / 2f + offset.y)
 
-    canvas.drawBitmap(bitmap, srcRect, RectF(left, top, right, bottom), paint)
+    canvas.drawBitmap(bitmap, matrix, paint)
 
     return output
 }

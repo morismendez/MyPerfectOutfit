@@ -15,5 +15,10 @@ data class OutfitHistoryEntity(
     val tieId: Long?,
     val watchId: Long?,
     val fragranceId: Long?,
+    val jacketId: Long?,
+    val bagId: Long?,
+    val dressId: Long?,
+    val skirtId: Long?,
+    val customGarmentIds: String?, // Lista de IDs separados por comas
     val summaryText: String
 )

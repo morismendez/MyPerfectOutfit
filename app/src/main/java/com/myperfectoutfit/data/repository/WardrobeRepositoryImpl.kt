@@ -1,7 +1,7 @@
 package com.myperfectoutfit.data.repository
 
 import com.myperfectoutfit.data.local.AppDatabase
-import com.myperfectoutfit.data.local.dao.OutfitWithDetails
+import com.myperfectoutfit.data.local.dao.HistoryWithDetails
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.local.enums.LaundryState
 import com.myperfectoutfit.data.local.backup.BackupManager
@@ -27,7 +27,6 @@ class WardrobeRepositoryImpl(
     private val watchDao = db.watchDao()
     private val fragranceDao = db.fragranceDao()
     private val jacketDao = db.jacketDao()
-    private val outfitDao = db.outfitDao()
     private val historyDao = db.historyDao()
     private val bagDao = db.bagDao()
     private val dressDao = db.dressDao()
@@ -234,20 +233,10 @@ class WardrobeRepositoryImpl(
         skirtDao.updateSkirt(skirt)
     }
 
-    // --- Outfits Diarios ---
-    override suspend fun saveOutfit(outfit: DailyOutfitEntity) = withContext(Dispatchers.IO) {
-        outfitDao.insertOutfit(outfit)
-    }
+    // --- Historial de Outfits ---
+    override fun getFullHistory(userId: Long): Flow<List<HistoryWithDetails>> = historyDao.getFullHistory(userId)
 
-    override suspend fun getOutfitByDate(date: String, userId: Long): OutfitWithDetails? = withContext(Dispatchers.IO) {
-        outfitDao.getOutfitByDate(date, userId)
-    }
-
-    override fun getOutfitHistory(userId: Long): Flow<List<OutfitWithDetails>> = outfitDao.getOutfitHistory(userId)
-
-    override suspend fun deleteOutfitByDate(date: String, userId: Long) = withContext(Dispatchers.IO) {
-        outfitDao.deleteOutfitByDate(date, userId)
-    }
+    override fun getHistoryByDate(userId: Long, date: String): Flow<List<HistoryWithDetails>> = historyDao.getHistoryByDate(userId, date)
 
     override suspend fun deleteShirt(shirt: ShirtEntity) = withContext(Dispatchers.IO) {
         shirtDao.deleteShirt(shirt)
@@ -334,6 +323,11 @@ class WardrobeRepositoryImpl(
                 tieId = tie?.id,
                 watchId = watch?.id,
                 fragranceId = fragrance?.id,
+                jacketId = jacket?.id,
+                bagId = bag?.id,
+                dressId = dress?.id,
+                skirtId = skirt?.id,
+                customGarmentIds = customGarments.joinToString(",") { it.id.toString() },
                 summaryText = summary
             )
         )

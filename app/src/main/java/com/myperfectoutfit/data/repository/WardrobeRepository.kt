@@ -1,6 +1,6 @@
 package com.myperfectoutfit.data.repository
 
-import com.myperfectoutfit.data.local.dao.OutfitWithDetails
+import com.myperfectoutfit.data.local.dao.HistoryWithDetails
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.local.enums.LaundryState
 import kotlinx.coroutines.flow.Flow
@@ -99,11 +99,9 @@ interface WardrobeRepository {
     suspend fun updateDress(dress: DressEntity)
     suspend fun updateSkirt(skirt: SkirtEntity)
 
-    // --- Outfits Diarios ---
-    suspend fun saveOutfit(outfit: DailyOutfitEntity)
-    suspend fun getOutfitByDate(date: String, userId: Long): OutfitWithDetails?
-    fun getOutfitHistory(userId: Long): Flow<List<OutfitWithDetails>>
-    suspend fun deleteOutfitByDate(date: String, userId: Long)
+    // --- Historial de Outfits ---
+    fun getFullHistory(userId: Long): Flow<List<HistoryWithDetails>>
+    fun getHistoryByDate(userId: Long, date: String): Flow<List<HistoryWithDetails>>
 
     //DELETES
     suspend fun deleteShirt(shirt: ShirtEntity)

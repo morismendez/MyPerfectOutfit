@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
@@ -27,7 +28,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import java.io.File
-import java.io.FileOutputStream
 import com.myperfectoutfit.ui.navigation.Screen
 import com.myperfectoutfit.ui.viewmodel.UserViewModel
 import kotlinx.coroutines.launch
@@ -50,6 +50,30 @@ fun MainScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showEditProfile by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    
+    var tempBackupFile by remember { mutableStateOf<File?>(null) }
+
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        uri?.let { targetUri ->
+            tempBackupFile?.let { file ->
+                scope.launch {
+                    try {
+                        context.contentResolver.openOutputStream(targetUri)?.use { output ->
+                            file.inputStream().use { input ->
+                                input.copyTo(output)
+                            }
+                        }
+                        Toast.makeText(context, "Respaldo guardado exitosamente.", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error al guardar el archivo.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
 
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -81,6 +105,7 @@ fun MainScreen(
     val items = listOf(
         Screen.Wardrobe,
         Screen.AiAdvisor,
+        Screen.History,
         Screen.Laundry
     )
 
@@ -96,34 +121,29 @@ fun MainScreen(
             },
             onAddRule = { title, desc -> userViewModel.addStyleRule(title, desc) },
             onToggleRule = { id, active -> userViewModel.toggleStyleRule(id, active) },
-            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) },
-            onBackup = {
-                scope.launch {
-                    val file = userViewModel.createBackupFile()
-                    if (file != null) {
-                        val uri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            file
-                        )
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/zip"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Guardar Respaldo"))
-                    } else {
-                        Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-            onRestore = {
-                restoreLauncher.launch("application/zip")
-            },
-            onDriveBackup = {
-                Toast.makeText(context, "Configura las credenciales de Google Cloud para usar Drive.", Toast.LENGTH_LONG).show()
-            }
+            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) }
         )
+    }
+
+    val onBackup = {
+        scope.launch {
+            val file = userViewModel.createBackupFile()
+            if (file != null) {
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Guardar Respaldo"))
+            } else {
+                Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     Scaffold(
@@ -184,7 +204,56 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    // Acciones dinámicas si fuera necesario
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menú")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Compartir Respaldo") },
+                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    onBackup()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Guardar en Carpeta") },
+                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    scope.launch {
+                                        val file = userViewModel.createBackupFile()
+                                        if (file != null) {
+                                            tempBackupFile = file
+                                            createDocumentLauncher.launch("myperfectoutfit_backup_${System.currentTimeMillis()}.zip")
+                                        } else {
+                                            Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Restaurar desde Archivo") },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    restoreLauncher.launch("application/zip")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Google Drive") },
+                                leadingIcon = { Icon(Icons.Default.Cloud, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    Toast.makeText(context, "Configura Drive en Google Cloud.", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
                 }
             )
         },
@@ -226,6 +295,9 @@ fun MainScreen(
             composable(Screen.Laundry.route) {
                 LaundryScreen()
             }
+            composable(Screen.History.route) {
+                HistoryScreen()
+            }
         }
     }
 }
@@ -240,10 +312,7 @@ fun EditProfileDialog(
     onSave: (name: String, email: String, photo: String?, categories: String, apiKey: String?) -> Unit,
     onAddRule: (String, String) -> Unit,
     onToggleRule: (Long, Boolean) -> Unit,
-    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit,
-    onBackup: () -> Unit,
-    onRestore: () -> Unit,
-    onDriveBackup: () -> Unit
+    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit
 ) {
     var name by remember { mutableStateOf(user.name) }
     var email by remember { mutableStateOf(user.email) }
@@ -445,41 +514,6 @@ fun EditProfileDialog(
 
                 HorizontalDivider()
 
-                Text(text = "Respaldo y Seguridad", style = MaterialTheme.typography.titleSmall)
-                
-                Button(
-                    onClick = onBackup,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Crear Respaldo Local (Compartir)")
-                }
-
-                OutlinedButton(
-                    onClick = onRestore,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.CloudDownload, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Restaurar desde Archivo Local")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(
-                    onClick = onDriveBackup,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                ) {
-                    Icon(Icons.Default.Cloud, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Respaldo en Google Drive")
-                }
-
-                HorizontalDivider()
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -581,7 +615,7 @@ fun AddStyleRuleDialog(
 private fun saveProfileImageToInternalStorage(context: android.content.Context, uri: Uri): String? {
     return try {
         val inputStream = context.contentResolver.openInputStream(uri)
-        val file = java.io.File(context.filesDir, "profile_update_${System.currentTimeMillis()}.jpg")
+        val file = File(context.filesDir, "profile_update_${System.currentTimeMillis()}.jpg")
         val outputStream = java.io.FileOutputStream(file)
         inputStream?.use { input ->
             outputStream.use { output ->

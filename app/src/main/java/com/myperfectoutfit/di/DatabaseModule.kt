@@ -47,7 +47,19 @@ object DatabaseModule {
     fun provideJacketDao(db: AppDatabase): JacketDao = db.jacketDao()
 
     @Provides
-    fun provideOutfitDao(db: AppDatabase): OutfitDao = db.outfitDao()
+    fun provideBagDao(db: AppDatabase): BagDao = db.bagDao()
+
+    @Provides
+    fun provideDressDao(db: AppDatabase): DressDao = db.dressDao()
+
+    @Provides
+    fun provideSkirtDao(db: AppDatabase): SkirtDao = db.skirtDao()
+
+    @Provides
+    fun provideCustomCategoryDao(db: AppDatabase): CustomCategoryDao = db.customDao()
+
+    @Provides
+    fun provideStyleRuleDao(db: AppDatabase): StyleRuleDao = db.ruleDao()
 
     @Provides
     fun provideHistoryDao(db: AppDatabase): OutfitHistoryDao = db.historyDao()
