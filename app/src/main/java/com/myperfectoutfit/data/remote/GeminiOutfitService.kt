@@ -3,8 +3,11 @@ package com.myperfectoutfit.data.remote
 import android.graphics.Bitmap
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
+import com.google.ai.client.generativeai.type.generationConfig
 import com.myperfectoutfit.BuildConfig
 import com.myperfectoutfit.data.local.entities.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,6 +36,7 @@ class GeminiOutfitService @Inject constructor() {
         bags: List<BagEntity>,
         dresses: List<DressEntity>,
         skirts: List<SkirtEntity>,
+        customGarments: List<CustomGarmentEntity> = emptyList(),
         styleRules: List<StyleRuleEntity> = emptyList(),
         baseGarments: List<Any> = emptyList(),
         userInstruction: String = "",
@@ -41,6 +45,42 @@ class GeminiOutfitService @Inject constructor() {
     ): String {
         val currentDate = SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy", Locale("es", "ES")).format(Date())
         val generativeModel = getModel(userApiKey)
+
+        val inventorySections = mutableListOf<String>()
+
+        if (shirts.isNotEmpty()) {
+            inventorySections.add("--- CAMISAS/TOPS ---\n" + shirts.joinToString("\n") { "- ID:${it.id} | ${it.subType} ${it.brand} | Color: ${it.primaryColor} ${if (it.secondaryColor != null) "+ ${it.secondaryColor}" else ""} | Patrón: ${it.pattern} | Manga: ${it.sleeveLength} | Cuello: ${it.necklineStyle} | Material: ${it.material} | Corte: ${it.fit} | Formalidad: ${it.formalityLevel}" })
+        }
+        if (pants.isNotEmpty()) {
+            inventorySections.add("--- PANTALONES/INFERIORES ---\n" + pants.joinToString("\n") { "- ID:${it.id} | ${it.subType} ${it.brand ?: ""} | Color: ${it.primaryColor} | Material: ${it.material} | Largo: ${it.lengthStyle} | Tiro: ${it.waistRise} | Corte: ${it.fitStyle} | Formalidad: ${it.formalityLevel}" })
+        }
+        if (shoes.isNotEmpty()) {
+            inventorySections.add("--- CALZADO ---\n" + shoes.joinToString("\n") { "- ID:${it.id} | ${it.subType} ${it.style} ${it.brand} | Color: ${it.color} | Material: ${it.material} | Tacón: ${it.heelHeightStyle} | Punta: ${it.toeStyle} | Cierre: ${it.closureType} | Formalidad: ${it.formalityLevel}" })
+        }
+        if (jackets.isNotEmpty()) {
+            inventorySections.add("--- CHAQUETAS ---\n" + jackets.joinToString("\n") { "- ID:${it.id} | ${it.brand ?: ""} | ${it.color} | Tipo: ${it.type} | Cierre: ${it.closureType}" })
+        }
+        if (bags.isNotEmpty()) {
+            inventorySections.add("--- BOLSOS ---\n" + bags.joinToString("\n") { "- ID:${it.id} | ${it.brand ?: ""} | ${it.color} | Estilo: ${it.style} | Tamaño: ${it.size}" })
+        }
+        if (ties.isNotEmpty()) {
+            inventorySections.add("--- CORBATAS ---\n" + ties.joinToString("\n") { "- ID:${it.id} | ${it.colorRange} | Diseño: ${it.pattern}" })
+        }
+        if (watches.isNotEmpty()) {
+            inventorySections.add("--- RELOJES ---\n" + watches.joinToString("\n") { "- ID:${it.id} | ${it.brand} ${it.model} | Correa: ${it.strapColor} (${it.strapMaterial})" })
+        }
+        if (fragrances.isNotEmpty()) {
+            inventorySections.add("--- FRAGANCIAS ---\n" + fragrances.joinToString("\n") { "- ID:${it.id} | ${it.brand} ${it.name} | Perfil: ${it.profile} | Ocasión: ${it.occasionTag}" })
+        }
+        if (dresses.isNotEmpty()) {
+            inventorySections.add("--- VESTIDOS ---\n" + dresses.joinToString("\n") { "- ID:${it.id} | ${it.brand ?: ""} | ${it.color} | Patrón: ${it.pattern} | Largo: ${it.length}" })
+        }
+        if (skirts.isNotEmpty()) {
+            inventorySections.add("--- FALDAS ---\n" + skirts.joinToString("\n") { "- ID:${it.id} | ${it.brand ?: ""} | ${it.color} | Estilo: ${it.style} | Largo: ${it.length}" })
+        }
+        if (customGarments.isNotEmpty()) {
+            inventorySections.add("--- PRENDAS PERSONALIZADAS ---\n" + customGarments.joinToString("\n") { "- ID:${it.id} | ${it.attributeValues.replace("|", " - ")}" })
+        }
 
         val baseGarmentsPrompt = if (baseGarments.isNotEmpty()) {
             """
@@ -92,8 +132,8 @@ class GeminiOutfitService @Inject constructor() {
         } else ""
 
         val prompt = """
-            Eres un asesor de imagen y estilista personal experto.
-            Tu objetivo es analizar mi inventario disponible y recomendar la mejor combinación para hoy.
+            Eres un asesor de imagen y estilista personal experto con un gusto impecable. 
+            Tu objetivo es generar una recomendación de outfit altamente personalizada y sofisticada.
 
             FECHA ACTUAL: $currentDate
             $baseGarmentsPrompt
@@ -101,47 +141,16 @@ class GeminiOutfitService @Inject constructor() {
             $instructionPrompt
             $avoidPrompt
 
-            INVENTARIO LIMPIO Y DISPONIBLE HOY:
-
-            --- CAMISAS/TOPS DISPONIBLES ---
-            ${shirts.joinToString("\n") { "- ID:${it.id} | Tipo: ${it.subType} | Marca: ${it.brand} | Color: ${it.primaryColor} (Secundario: ${it.secondaryColor ?: "N/A"}) | Patrón: ${it.pattern} | Manga: ${it.sleeveLength} | Cuello/Escote: ${it.necklineStyle} | Material: ${it.material} | Formalidad: ${it.formalityLevel}" }}
-
-            --- PANTALONES/INFERIORES DISPONIBLES ---
-            ${pants.joinToString("\n") { "- ID:${it.id} | Tipo: ${it.subType} | Marca: ${it.brand ?: "S/M"} | Color: ${it.primaryColor} (Secundario: ${it.secondaryColor ?: "N/A"}) | Material: ${it.material} | Largo: ${it.lengthStyle} | Tiro: ${it.waistRise} | Corte: ${it.fitStyle} | Formalidad: ${it.formalityLevel}" }}
-
-            --- CALZADO DISPONIBLE ---
-            ${shoes.joinToString("\n") { "- ID:${it.id} | Tipo: ${it.subType} | Estilo: ${it.style} | Marca: ${it.brand} | Color: ${it.color} (Secundario: ${it.secondaryColor ?: "N/A"}) | Material: ${it.material} | Tacón: ${it.heelHeightStyle} | Puntera: ${it.toeStyle} | Cierre: ${it.closureType} | Formalidad: ${it.formalityLevel}" }}
-
-            --- CORBATAS DISPONIBLES ---
-            ${ties.joinToString("\n") { "- ID:${it.id} | Gama: ${it.colorRange} | Diseño: ${it.pattern}" }}
-
-            --- RELOJES DISPONIBLES ---
-            ${watches.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand} | Modelo: ${it.model} | Correa: ${it.strapColor} (${it.strapMaterial})" }}
-
-            --- FRAGANCIAS DISPONIBLES ---
-            ${fragrances.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand} | Nombre: ${it.name}" }}
-            
-            --- CHAQUETAS DISPONIBLES ---
-            ${jackets.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand ?: "S/M"} | Color: ${it.color} | Tipo: ${it.type}" }}
-
-            --- BOLSOS/CARTERAS DISPONIBLES ---
-            ${bags.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand ?: "S/M"} | Estilo: ${it.style} | Color: ${it.color} | Tamaño: ${it.size}" }}
-
-            --- VESTIDOS DISPONIBLES ---
-            ${dresses.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand ?: "S/M"} | Color: ${it.color} | Estampado: ${it.pattern} | Largo: ${it.length}" }}
-
-            --- FALDAS DISPONIBLES ---
-            ${skirts.joinToString("\n") { "- ID:${it.id} | Marca: ${it.brand ?: "S/M"} | Color: ${it.color} | Estilo: ${it.style} | Largo: ${it.length}" }}
+            INVENTARIO DETALLADO (Solo se incluyen categorías con prendas disponibles):
+            ${inventorySections.joinToString("\n\n")}
 
             INSTRUCCIONES DE RESPUESTA:
-            1. Selecciona exactamente las prendas que arman el conjunto (Camisa+Pantalón/Falda O Vestido, Calzado, y si aplica, Bolso, Corbata, Reloj, Fragancia y Chaqueta).
-            2. Tu explicación debe ser natural y elegante. NO utilices asteriscos (**) para negritas ni otros símbolos de formato Markdown. 
-            3. NO menciones IDs de prendas ni nombres de campos técnicos (como "laundryState").
-            4. Si una categoría no es necesaria (ej. no hay corbata que combine), simplemente NO la menciones; no digas "No aplica" ni "null".
-            5. Incluye la instrucción del usuario en tu razonamiento de forma integrada.
-            6. CRÍTICO: Al final de tu respuesta, añade una ÚNICA LÍNEA con el formato exacto: 
+            1. Crea una propuesta elegante. Explica POR QUÉ estas prendas combinan bien (color, textura, ocasión).
+            2. Evita tecnicismos de base de datos. Sé natural y persuasivo.
+            3. NO utilices formato Markdown (sin asteriscos).
+            4. OBLIGATORIO: Finaliza con esta línea exacta:
                SELECCION_IDS: SHIRT=id, PANT=id, SHOE=id, TIE=id, WATCH=id, FRAGRANCE=id, JACKET=id, BAG=id, DRESS=id, SKIRT=id
-               (Si alguna categoría no aplica, pon "null" en lugar del id, ej: TIE=null).
+               (Usa "null" si la prenda no es necesaria).
         """.trimIndent()
 
         return try {
@@ -166,32 +175,34 @@ class GeminiOutfitService @Inject constructor() {
         userApiKey: String? = null
     ): String? {
         val categoryContext = if (categoryName != null) {
-            "La prenda pertenece a la categoría: $categoryName."
+            "La prenda es un(a): $categoryName."
         } else ""
 
         val attributesContext = if (!customAttributes.isNullOrBlank()) {
-            "Debes detectar obligatoriamente estos campos específicos: $customAttributes."
+            "Debes detectar estos campos personalizados: $customAttributes."
         } else {
             """
-            - subType: (Tipo específico de la categoría)
-            - brand: (Marca detectada o "Sin Marca")
-            - color: (Tonalidad exacta, ej: "Café Coñac", "Gris Oxford")
+            Detecta con alta precisión:
+            - subType: (Tipo específico)
+            - brand: (Marca o Sin Marca)
+            - color: (Tonalidad exacta: ej. Tan, Oxford, Coñac, Olivo)
             - secondaryColor: (Si aplica)
-            - material: (Lana, Denim, Cuero, etc.)
-            - pattern: (Liso, Rayas, Cuadros, etc.)
+            - material: (Lana, Seda, Lino, Denim, etc.)
+            - pattern: (Liso, Rayas, Cuadros Vichy, Pata de Gallo, etc.)
             - formalityLevel: (Formal, Casual, etc.)
-            - other: (Detalles como cuello, manga, tiro o tacón según aplique)
+            - other: (Detalles como tipo de cuello, manga, tiro o tacón)
             """.trimIndent()
         }
 
         val prompt = """
-            Analiza esta imagen de una prenda de vestir con ojo de estilista experto.
+            Actúa como un analista de moda profesional. Analiza la imagen adjunta.
             $categoryContext
             $attributesContext
             
-            Devuelve la información en formato JSON puro (sin bloques de código ```json).
-            Sé conciso y preciso para minimizar el tiempo de respuesta.
-            Si no puedes identificar la prenda, devuelve un JSON con un campo "error".
+            Reglas de respuesta:
+            1. Formato JSON puro y válido.
+            2. Sin bloques de código markdown ni texto adicional.
+            3. Si no estás seguro de un campo, intenta dar la mejor estimación basada en la visual.
         """.trimIndent()
 
         val generativeModel = getModel(userApiKey)
@@ -205,5 +216,14 @@ class GeminiOutfitService @Inject constructor() {
         } catch (e: Exception) {
             null
         }
+    }
+
+    suspend fun generateMannequinImage(
+        outfitDescription: String,
+        userApiKey: String? = null
+    ): Bitmap? {
+        // Esta función queda en pausa hasta tener soporte nativo de imagen en Gemini (Plan de pago)
+        // o hasta que un modelo fotorrealista compatible sea accesible por API gratuita.
+        return null 
     }
 }

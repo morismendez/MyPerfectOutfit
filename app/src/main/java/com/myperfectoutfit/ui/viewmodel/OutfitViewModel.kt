@@ -28,6 +28,8 @@ data class RecommendedOutfit(
 
 data class AiOutfitUiState(
     val isLoading: Boolean = false,
+    val isGeneratingMannequin: Boolean = false,
+    val mannequinImage: android.graphics.Bitmap? = null,
     val userInstruction: String = "",
     val activeInstruction: String = "", // La instrucción que se usó para las recomendaciones actuales
     val recommendations: List<RecommendedOutfit> = emptyList(),
@@ -172,6 +174,7 @@ class OutfitViewModel @Inject constructor(
                     bags = bags,
                     dresses = dresses,
                     skirts = skirts,
+                    customGarments = repository.getAllCustomGarments(userId).firstOrNull()?.filter { it.laundryState == com.myperfectoutfit.data.local.enums.LaundryState.CLEAN } ?: emptyList(),
                     styleRules = activeRules,
                     baseGarments = _uiState.value.baseGarments,
                     userInstruction = finalInstruction,
@@ -234,6 +237,30 @@ class OutfitViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun generateMannequin(outfit: RecommendedOutfit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGeneratingMannequin = true, mannequinImage = null) }
+            
+            val description = """
+                Prendas:
+                - ${outfit.shirt?.brand ?: ""} ${outfit.shirt?.primaryColor ?: ""} (${outfit.shirt?.subType ?: ""})
+                - ${outfit.pant?.brand ?: ""} ${outfit.pant?.primaryColor ?: ""}
+                - ${outfit.shoe?.brand ?: ""} ${outfit.shoe?.color ?: ""}
+                - ${outfit.jacket?.brand ?: ""} ${outfit.jacket?.color ?: ""}
+                ${if (outfit.dress != null) "- Vestido: ${outfit.dress.brand} ${outfit.dress.color}" else ""}
+            """.trimIndent()
+            
+            val userKey = repository.getGeminiApiKey()
+            val bitmap = geminiService.generateMannequinImage(description, userKey)
+            
+            _uiState.update { it.copy(isGeneratingMannequin = false, mannequinImage = bitmap) }
+        }
+    }
+
+    fun clearMannequin() {
+        _uiState.update { it.copy(mannequinImage = null, isGeneratingMannequin = false) }
     }
 
     fun confirmOutfit(outfit: RecommendedOutfit) {

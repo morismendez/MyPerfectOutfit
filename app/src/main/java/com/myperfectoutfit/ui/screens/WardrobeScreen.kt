@@ -1,7 +1,5 @@
 package com.myperfectoutfit.ui.screens
 
-import androidx.palette.graphics.Palette
-import androidx.compose.material.icons.filled.Warning
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -30,17 +28,17 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -53,6 +51,11 @@ import com.myperfectoutfit.ui.state.CategoryFilter
 import com.myperfectoutfit.ui.viewmodel.WardrobeViewModel
 import java.io.File
 import java.io.FileOutputStream
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.background
+import androidx.palette.graphics.Palette
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +70,7 @@ fun WardrobeScreen(
     var categoryToDelete by remember { mutableStateOf<CustomCategoryEntity?>(null) }
     var itemToDelete by remember { mutableStateOf<Any?>(null) }
     var itemToEdit by remember { mutableStateOf<Any?>(null) }
+    var zoomImageUri by remember { mutableStateOf<String?>(null) }
 
     if (showAddCategoryDialog || categoryToEdit != null) {
         AddCategoryDialog(
@@ -157,7 +161,8 @@ fun WardrobeScreen(
                                     imageUri = shirt.imageUrl,
                                     laundryState = shirt.laundryState,
                                     onDeleteRequested = { itemToDelete = shirt },
-                                    onEditRequested = { itemToEdit = shirt }
+                                    onEditRequested = { itemToEdit = shirt },
+                                    onImageClick = { zoomImageUri = shirt.imageUrl }
                                 )
                             }
                         }
@@ -176,7 +181,8 @@ fun WardrobeScreen(
                                     imageUri = pant.imageUrl,
                                     laundryState = pant.laundryState,
                                     onDeleteRequested = { itemToDelete = pant },
-                                    onEditRequested = { itemToEdit = pant }
+                                    onEditRequested = { itemToEdit = pant },
+                                    onImageClick = { zoomImageUri = pant.imageUrl }
                                 )
                             }
                         }
@@ -195,7 +201,8 @@ fun WardrobeScreen(
                                     imageUri = shoe.imageUrl,
                                     laundryState = if (shoe.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                     onDeleteRequested = { itemToDelete = shoe },
-                                    onEditRequested = { itemToEdit = shoe }
+                                    onEditRequested = { itemToEdit = shoe },
+                                    onImageClick = { zoomImageUri = shoe.imageUrl }
                                 )
                             }
                         }
@@ -214,7 +221,8 @@ fun WardrobeScreen(
                                     imageUri = tie.imageUrl,
                                     laundryState = tie.laundryState,
                                     onDeleteRequested = { itemToDelete = tie },
-                                    onEditRequested = { itemToEdit = tie }
+                                    onEditRequested = { itemToEdit = tie },
+                                    onImageClick = { zoomImageUri = tie.imageUrl }
                                 )
                             }
                         }
@@ -233,7 +241,8 @@ fun WardrobeScreen(
                                     imageUri = watch.imageUrl,
                                     laundryState = if (watch.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                     onDeleteRequested = { itemToDelete = watch },
-                                    onEditRequested = { itemToEdit = watch }
+                                    onEditRequested = { itemToEdit = watch },
+                                    onImageClick = { zoomImageUri = watch.imageUrl }
                                 )
                             }
                         }
@@ -252,7 +261,8 @@ fun WardrobeScreen(
                                     imageUri = fragrance.imageUrl,
                                     laundryState = LaundryState.CLEAN,
                                     onDeleteRequested = { itemToDelete = fragrance },
-                                    onEditRequested = { itemToEdit = fragrance }
+                                    onEditRequested = { itemToEdit = fragrance },
+                                    onImageClick = { zoomImageUri = fragrance.imageUrl }
                                 )
                             }
                         }
@@ -271,7 +281,8 @@ fun WardrobeScreen(
                                     imageUri = jacket.imageUrl,
                                     laundryState = jacket.laundryState,
                                     onDeleteRequested = { itemToDelete = jacket },
-                                    onEditRequested = { itemToEdit = jacket }
+                                    onEditRequested = { itemToEdit = jacket },
+                                    onImageClick = { zoomImageUri = jacket.imageUrl }
                                 )
                             }
                         }
@@ -290,7 +301,8 @@ fun WardrobeScreen(
                                     imageUri = bag.imageUrl,
                                     laundryState = if (bag.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                     onDeleteRequested = { itemToDelete = bag },
-                                    onEditRequested = { itemToEdit = bag }
+                                    onEditRequested = { itemToEdit = bag },
+                                    onImageClick = { zoomImageUri = bag.imageUrl }
                                 )
                             }
                         }
@@ -309,7 +321,8 @@ fun WardrobeScreen(
                                     imageUri = dress.imageUrl,
                                     laundryState = dress.laundryState,
                                     onDeleteRequested = { itemToDelete = dress },
-                                    onEditRequested = { itemToEdit = dress }
+                                    onEditRequested = { itemToEdit = dress },
+                                    onImageClick = { zoomImageUri = dress.imageUrl }
                                 )
                             }
                         }
@@ -328,7 +341,8 @@ fun WardrobeScreen(
                                     imageUri = skirt.imageUrl,
                                     laundryState = skirt.laundryState,
                                     onDeleteRequested = { itemToDelete = skirt },
-                                    onEditRequested = { itemToEdit = skirt }
+                                    onEditRequested = { itemToEdit = skirt },
+                                    onImageClick = { zoomImageUri = skirt.imageUrl }
                                 )
                             }
                         }
@@ -349,7 +363,8 @@ fun WardrobeScreen(
                                         imageUri = garment.imageUrl,
                                         laundryState = garment.laundryState,
                                         onDeleteRequested = { itemToDelete = garment },
-                                        onEditRequested = { itemToEdit = garment }
+                                        onEditRequested = { itemToEdit = garment },
+                                        onImageClick = { zoomImageUri = garment.imageUrl }
                                     )
                                 }
                             }
@@ -367,7 +382,8 @@ fun WardrobeScreen(
                                             imageUri = shirt.imageUrl,
                                             laundryState = shirt.laundryState,
                                             onDeleteRequested = { itemToDelete = shirt },
-                                            onEditRequested = { itemToEdit = shirt }
+                                            onEditRequested = { itemToEdit = shirt },
+                                            onImageClick = { zoomImageUri = shirt.imageUrl }
                                         )
                                     }
                                 }
@@ -379,7 +395,8 @@ fun WardrobeScreen(
                                             imageUri = pant.imageUrl,
                                             laundryState = pant.laundryState,
                                             onDeleteRequested = { itemToDelete = pant },
-                                            onEditRequested = { itemToEdit = pant }
+                                            onEditRequested = { itemToEdit = pant },
+                                            onImageClick = { zoomImageUri = pant.imageUrl }
                                         )
                                     }
                                 }
@@ -391,7 +408,8 @@ fun WardrobeScreen(
                                             imageUri = shoe.imageUrl,
                                             laundryState = if (shoe.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                             onDeleteRequested = { itemToDelete = shoe },
-                                            onEditRequested = { itemToEdit = shoe }
+                                            onEditRequested = { itemToEdit = shoe },
+                                            onImageClick = { zoomImageUri = shoe.imageUrl }
                                         )
                                     }
                                 }
@@ -403,7 +421,8 @@ fun WardrobeScreen(
                                             imageUri = tie.imageUrl,
                                             laundryState = tie.laundryState,
                                             onDeleteRequested = { itemToDelete = tie },
-                                            onEditRequested = { itemToEdit = tie }
+                                            onEditRequested = { itemToEdit = tie },
+                                            onImageClick = { zoomImageUri = tie.imageUrl }
                                         )
                                     }
                                 }
@@ -415,7 +434,8 @@ fun WardrobeScreen(
                                             imageUri = watch.imageUrl,
                                             laundryState = if (watch.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                             onDeleteRequested = { itemToDelete = watch },
-                                            onEditRequested = { itemToEdit = watch }
+                                            onEditRequested = { itemToEdit = watch },
+                                            onImageClick = { zoomImageUri = watch.imageUrl }
                                         )
                                     }
                                 }
@@ -427,7 +447,8 @@ fun WardrobeScreen(
                                             imageUri = fragrance.imageUrl,
                                             laundryState = LaundryState.CLEAN,
                                             onDeleteRequested = { itemToDelete = fragrance },
-                                            onEditRequested = { itemToEdit = fragrance }
+                                            onEditRequested = { itemToEdit = fragrance },
+                                            onImageClick = { zoomImageUri = fragrance.imageUrl }
                                         )
                                     }
                                 }
@@ -439,7 +460,8 @@ fun WardrobeScreen(
                                             imageUri = jacket.imageUrl,
                                             laundryState = jacket.laundryState,
                                             onDeleteRequested = { itemToDelete = jacket },
-                                            onEditRequested = { itemToEdit = jacket }
+                                            onEditRequested = { itemToEdit = jacket },
+                                            onImageClick = { zoomImageUri = jacket.imageUrl }
                                         )
                                     }
                                 }
@@ -451,7 +473,8 @@ fun WardrobeScreen(
                                             imageUri = bag.imageUrl,
                                             laundryState = if (bag.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
                                             onDeleteRequested = { itemToDelete = bag },
-                                            onEditRequested = { itemToEdit = bag }
+                                            onEditRequested = { itemToEdit = bag },
+                                            onImageClick = { zoomImageUri = bag.imageUrl }
                                         )
                                     }
                                 }
@@ -463,7 +486,8 @@ fun WardrobeScreen(
                                             imageUri = dress.imageUrl,
                                             laundryState = dress.laundryState,
                                             onDeleteRequested = { itemToDelete = dress },
-                                            onEditRequested = { itemToEdit = dress }
+                                            onEditRequested = { itemToEdit = dress },
+                                            onImageClick = { zoomImageUri = dress.imageUrl }
                                         )
                                     }
                                 }
@@ -475,7 +499,8 @@ fun WardrobeScreen(
                                             imageUri = skirt.imageUrl,
                                             laundryState = skirt.laundryState,
                                             onDeleteRequested = { itemToDelete = skirt },
-                                            onEditRequested = { itemToEdit = skirt }
+                                            onEditRequested = { itemToEdit = skirt },
+                                            onImageClick = { zoomImageUri = skirt.imageUrl }
                                         )
                                     }
                                 }
@@ -488,7 +513,8 @@ fun WardrobeScreen(
                                         imageUri = garment.imageUrl,
                                         laundryState = garment.laundryState,
                                         onDeleteRequested = { itemToDelete = garment },
-                                        onEditRequested = { itemToEdit = garment }
+                                        onEditRequested = { itemToEdit = garment },
+                                        onImageClick = { zoomImageUri = garment.imageUrl }
                                     )
                                 }
                             }
@@ -506,6 +532,32 @@ fun WardrobeScreen(
                     .padding(16.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Prenda")
+            }
+        }
+    }
+
+    if (zoomImageUri != null) {
+        Dialog(onDismissRequest = { zoomImageUri = null }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = zoomImageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                    IconButton(
+                        onClick = { zoomImageUri = null },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                    }
+                }
             }
         }
     }
@@ -803,7 +855,8 @@ fun WardrobeScreen(
                     }
                 } else {
                     val timestamp = System.currentTimeMillis()
-                    when (uiState.selectedCategory) {
+                    val targetCategory = data["selectedCategory"] as? CategoryFilter ?: uiState.selectedCategory
+                    when (targetCategory) {
                         CategoryFilter.SHIRTS -> viewModel.insertShirt(ShirtEntity(
                             code = "S$timestamp", 
                             brand = brand, 
@@ -1004,14 +1057,16 @@ fun PrendaItemCard(
     imageUri: String?,
     laundryState: LaundryState,
     onDeleteRequested: () -> Unit,
-    onEditRequested: () -> Unit
+    onEditRequested: () -> Unit,
+    onImageClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .padding(8.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable { onImageClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
@@ -1412,6 +1467,7 @@ fun PrendaDialog(
             selectedImageUri = uri
             uri?.let {
                 isAnalyzing = true
+                offlineMode = false
                 analyzeImage(
                     uri = it, 
                     context = context, 
@@ -1477,8 +1533,6 @@ fun PrendaDialog(
             )
             tempCameraUri = uri
             cameraLauncher.launch(uri)
-        } else {
-            // Se podría mostrar un mensaje de error o aviso
         }
     }
 
@@ -1838,11 +1892,11 @@ private fun analyzeImage(
                 }
             } else ""
 
-            // Redimensionar para optimizar IA (Max 800px)
-            val scaledBitmap = if (bitmap.width > 800 || bitmap.height > 800) {
+            // Redimensionar para optimizar IA (Max 512px para mayor velocidad)
+            val scaledBitmap = if (bitmap.width > 512 || bitmap.height > 512) {
                 val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
-                val newWidth = if (ratio > 1) 800 else (800 * ratio).toInt()
-                val newHeight = if (ratio > 1) (800 / ratio).toInt() else 800
+                val newWidth = if (ratio > 1) 512 else (512 * ratio).toInt()
+                val newHeight = if (ratio > 1) (512 / ratio).toInt() else 512
                 Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
             } else bitmap
 
