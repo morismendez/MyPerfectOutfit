@@ -239,30 +239,6 @@ class OutfitViewModel @Inject constructor(
         }
     }
 
-    fun generateMannequin(outfit: RecommendedOutfit) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isGeneratingMannequin = true, mannequinImage = null) }
-            
-            val description = """
-                Prendas:
-                - ${outfit.shirt?.brand ?: ""} ${outfit.shirt?.primaryColor ?: ""} (${outfit.shirt?.subType ?: ""})
-                - ${outfit.pant?.brand ?: ""} ${outfit.pant?.primaryColor ?: ""}
-                - ${outfit.shoe?.brand ?: ""} ${outfit.shoe?.color ?: ""}
-                - ${outfit.jacket?.brand ?: ""} ${outfit.jacket?.color ?: ""}
-                ${if (outfit.dress != null) "- Vestido: ${outfit.dress.brand} ${outfit.dress.color}" else ""}
-            """.trimIndent()
-            
-            val userKey = repository.getGeminiApiKey()
-            val bitmap = geminiService.generateMannequinImage(description, userKey)
-            
-            _uiState.update { it.copy(isGeneratingMannequin = false, mannequinImage = bitmap) }
-        }
-    }
-
-    fun clearMannequin() {
-        _uiState.update { it.copy(mannequinImage = null, isGeneratingMannequin = false) }
-    }
-
     fun confirmOutfit(outfit: RecommendedOutfit) {
         viewModelScope.launch {
             repository.getPrimaryUser().firstOrNull()?.let { user ->

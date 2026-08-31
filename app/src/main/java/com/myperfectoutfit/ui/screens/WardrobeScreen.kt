@@ -4,10 +4,8 @@ import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.os.Build
-import android.provider.MediaStore
 import org.json.JSONObject
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.myperfectoutfit.ui.viewmodel.RecommendedOutfit
@@ -43,6 +41,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
@@ -127,7 +126,7 @@ fun WardrobeScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             val activeCategories = uiState.user?.activeCategories?.split(",")?.mapNotNull { name ->
-                try { CategoryFilter.valueOf(name) } catch(e: Exception) { null }
+                try { CategoryFilter.valueOf(name) } catch(_: Exception) { null }
             } ?: CategoryFilter.entries.filter { it != CategoryFilter.ALL && it != CategoryFilter.LAUNDRY }
 
             CategoryFilterBar(
@@ -743,7 +742,7 @@ fun WardrobeScreen(
             onSave = { data ->
                 val uriStr = data["imageUrl"] as? String
                 val imageUrl = if (uriStr != null && uriStr.startsWith("content://")) {
-                    saveImageToInternalStorage(context, Uri.parse(uriStr)) ?: uriStr
+                    saveImageToInternalStorage(context, uriStr.toUri()) ?: uriStr
                 } else uriStr ?: ""
 
                 val brand = data["brand"] as? String ?: "Sin Marca"
@@ -1395,7 +1394,7 @@ fun PrendaDialog(
     }
 
     var selectedImageUri by remember { 
-        mutableStateOf(initialData?.get("imageUrl")?.toString()?.let { Uri.parse(it) }) 
+        mutableStateOf(initialData?.get("imageUrl")?.toString()?.toUri()) 
     }
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }

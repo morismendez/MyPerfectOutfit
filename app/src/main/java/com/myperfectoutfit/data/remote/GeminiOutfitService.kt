@@ -3,7 +3,6 @@ package com.myperfectoutfit.data.remote
 import android.graphics.Bitmap
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
-import com.google.ai.client.generativeai.type.generationConfig
 import com.myperfectoutfit.BuildConfig
 import com.myperfectoutfit.data.local.entities.*
 import kotlinx.coroutines.Dispatchers
@@ -213,12 +212,13 @@ class GeminiOutfitService @Inject constructor() {
             }
             val response = generativeModel.generateContent(inputContent)
             response.text
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
-    suspend fun generateMannequinImage(
+    @Suppress("UNUSED_PARAMETER")
+    fun generateMannequinImage(
         outfitDescription: String,
         userApiKey: String? = null
     ): Bitmap? {

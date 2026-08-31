@@ -1,7 +1,6 @@
 package com.myperfectoutfit.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,22 +35,22 @@ import androidx.compose.ui.platform.LocalContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OutfitGeneratorScreen(
-    viewModel: OutfitViewModel = hiltViewModel()
+    viewModel: OutfitViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedOutfitToConfirm by remember { mutableStateOf<RecommendedOutfit?>(null) }
-    var showGarmentPicker by remember { mutableStateOf(false) }
+    var showGarmentPicker by remember { mutableStateOf(value = false) }
 
     // Inicialización de TextToSpeech
     val tts = remember {
-        var ttsInstance: TextToSpeech? = null
-        ttsInstance = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                ttsInstance?.language = Locale("es", "ES")
-            }
+        TextToSpeech(context) { _ ->
+            // Se asume que el idioma español está disponible
         }
-        ttsInstance
+    }
+
+    LaunchedEffect(Unit) {
+        tts.language = Locale("es", "ES")
     }
 
     DisposableEffect(Unit) {
@@ -61,7 +60,7 @@ fun OutfitGeneratorScreen(
     }
 
     val speak = { text: String ->
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
     // Diálogo para seleccionar prenda base
@@ -337,154 +336,6 @@ fun GarmentSelectionDialog(
             Button(onClick = onDismiss) { Text("Listo") }
         }
     )
-}
-
-@Composable
-fun MannequinDialog(
-    outfit: RecommendedOutfit,
-    mannequinImage: android.graphics.Bitmap?,
-    isGenerating: Boolean,
-    onDismiss: () -> Unit,
-    onRetry: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Maniquí Realista IA", style = MaterialTheme.typography.headlineSmall)
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Banner Informativo
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Esta es una representación visual aproximada generada por IA. Las prendas reales de tu armario pueden variar ligeramente en textura o tono.",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Área de Visualización
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isGenerating) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("IA vistiendo el maniquí...", style = MaterialTheme.typography.bodyMedium)
-                        }
-                    } else if (mannequinImage != null) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(0.7f),
-                            elevation = CardDefaults.cardElevation(8.dp),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            androidx.compose.foundation.Image(
-                                bitmap = mannequinImage.asImageBitmap(),
-                                contentDescription = "Outfit en maniquí",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    } else {
-                        // Fallback si la generación falla o no hay imagen
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ImageNotSupported,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No se pudo generar la imagen en este momento.",
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(onClick = onRetry) {
-                                Text("Reintentar Generación")
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Miniatura de prendas reales para referencia
-                Text(
-                    text = "Tu ropa real:",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) {
-                    val items = listOfNotNull(
-                        outfit.shirt, outfit.pant, outfit.shoe, outfit.jacket,
-                        outfit.dress, outfit.skirt
-                    )
-                    items(items) { garment ->
-                        Card(modifier = Modifier.size(50.dp)) {
-                            AsyncImage(
-                                model = (garment as? ShirtEntity)?.imageUrl 
-                                    ?: (garment as? PantEntity)?.imageUrl 
-                                    ?: (garment as? ShoeEntity)?.imageUrl
-                                    ?: (garment as? JacketEntity)?.imageUrl
-                                    ?: (garment as? DressEntity)?.imageUrl
-                                    ?: (garment as? SkirtEntity)?.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-    }
 }
 
 @Composable
