@@ -181,6 +181,16 @@ class OutfitViewModel @Inject constructor(
                     excludeIds = alreadyRecommendedIds
                 )
 
+                if (aiRecommendation.startsWith("Error", ignoreCase = true)) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = aiRecommendation
+                        )
+                    }
+                    return@launch
+                }
+
                 android.util.Log.d("OutfitParser", "Raw AI Response: $aiRecommendation")
 
                 // Regex ultra-flexible para capturar los IDs en cualquier formato (con o sin espacios, mayúsculas o minúsculas)
@@ -205,8 +215,9 @@ class OutfitViewModel @Inject constructor(
                         .replace(Regex("""#+\s*"""), "") // Quitar encabezados h1, h2...
                         .replace("**", "")
                         .replace("*", "")
-                        .replace(Regex("""\(?ID:?\s*\d+\)?""", RegexOption.IGNORE_CASE), "") // Quitar (ID 1), ID: 1, etc.
-                        .replace(Regex("""\(\w+\s+ID:?\s*\d+\)""", RegexOption.IGNORE_CASE), "") // Quitar (SHOE ID 2)
+                        // Regex ultra-agresiva para IDs: borra (ID: 1), ID 1, Camisa 1, (SHOE 2), etc.
+                        .replace(Regex("""\(?\b(ID|SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT)[:\s]+\d+\)?""", RegexOption.IGNORE_CASE), "")
+                        .replace(Regex("""\(\s*\d+\s*\)"""), "") // Borra números entre paréntesis solos (1)
                         .trim()
                     
                     // Función auxiliar para limpiar IDs de caracteres como puntos o espacios
@@ -276,7 +287,7 @@ class OutfitViewModel @Inject constructor(
                         isLoading = false,
                         // Añadimos la nueva recomendación al inicio de la lista
                         recommendations = listOf(newRecommendation) + it.recommendations,
-                        errorMessage = if (aiRecommendation.startsWith("Error")) aiRecommendation else null
+                        errorMessage = null
                     )
                 }
             }
