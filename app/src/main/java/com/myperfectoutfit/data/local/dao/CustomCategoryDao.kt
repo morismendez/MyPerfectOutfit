@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CustomCategoryDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCategory(category: CustomCategoryEntity): Long
 
     @Query("SELECT * FROM custom_categories WHERE id = :id LIMIT 1")
@@ -22,7 +22,7 @@ interface CustomCategoryDao {
     @Delete
     suspend fun deleteCategory(category: CustomCategoryEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertGarment(garment: CustomGarmentEntity): Long
 
     @Query("SELECT * FROM custom_garments WHERE category_id = :categoryId")

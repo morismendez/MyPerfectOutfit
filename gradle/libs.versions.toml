@@ -13,8 +13,17 @@ hilt = "2.52"
 hiltNavigationCompose = "1.2.0"
 room = "2.6.1"
 palette = "1.0.0"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
+openai = "3.8.2"
+ktor = "2.3.12"
 
 [libraries]
+openai-client = { group = "com.aallam.openai", name = "openai-client", version.ref = "openai" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

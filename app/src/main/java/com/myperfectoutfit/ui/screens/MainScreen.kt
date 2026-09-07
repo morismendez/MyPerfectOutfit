@@ -90,6 +90,27 @@ fun MainScreen(
         }
     }
 
+    val onBackup = {
+        scope.launch {
+            val file = userViewModel.createBackupFile()
+            if (file != null) {
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Compartir Respaldo"))
+            } else {
+                Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     if (userState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -113,37 +134,20 @@ fun MainScreen(
         EditProfileDialog(
             user = userState.user!!,
             styleRules = userState.styleRules,
-            currentGeminiKey = userViewModel.getGeminiApiKey(),
             onDismiss = { showEditProfile = false },
-            onSave = { name, email, photo, categories, apiKey ->
-                userViewModel.updateUser(name, email, photo, categories, apiKey)
+            onSave = { name, email, photo, categories, displayMode ->
+                userViewModel.updateUser(name, email, photo, categories, displayMode)
                 showEditProfile = false
             },
             onAddRule = { title, desc -> userViewModel.addStyleRule(title, desc) },
             onToggleRule = { id, active -> userViewModel.toggleStyleRule(id, active) },
-            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) }
-        )
-    }
-
-    val onBackup = {
-        scope.launch {
-            val file = userViewModel.createBackupFile()
-            if (file != null) {
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/zip"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(intent, "Guardar Respaldo"))
-            } else {
-                Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) },
+            onBackup = { onBackup() },
+            onRestore = { restoreLauncher.launch("application/zip") },
+            onDriveBackup = {
+                Toast.makeText(context, "Configura Drive en Google Cloud.", Toast.LENGTH_SHORT).show()
             }
-        }
+        )
     }
 
     Scaffold(
@@ -307,16 +311,18 @@ fun MainScreen(
 fun EditProfileDialog(
     user: com.myperfectoutfit.data.local.entities.UserEntity,
     styleRules: List<com.myperfectoutfit.data.local.entities.StyleRuleEntity> = emptyList(),
-    currentGeminiKey: String? = null,
     onDismiss: () -> Unit,
-    onSave: (name: String, email: String, photo: String?, categories: String, apiKey: String?) -> Unit,
+    onSave: (name: String, email: String, photo: String?, categories: String, displayMode: com.myperfectoutfit.data.local.enums.CategoryDisplayMode) -> Unit,
     onAddRule: (String, String) -> Unit,
     onToggleRule: (Long, Boolean) -> Unit,
-    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit
+    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit,
+    onBackup: () -> Unit,
+    onRestore: () -> Unit,
+    onDriveBackup: () -> Unit
 ) {
     var name by remember { mutableStateOf(user.name) }
     var email by remember { mutableStateOf(user.email) }
-    var geminiKey by remember { mutableStateOf(currentGeminiKey ?: "") }
+    var displayMode by remember { mutableStateOf(user.categoryDisplayMode) }
     var showAddRuleDialog by remember { mutableStateOf(false) }
     var selectedImageUri by remember { 
         mutableStateOf(user.profilePictureUrl?.let { Uri.parse(it) }) 
@@ -327,7 +333,7 @@ fun EditProfileDialog(
     }
     val activeCategories = remember { 
         val saved = user.activeCategories.split(",").mapNotNull { name ->
-            try { com.myperfectoutfit.ui.state.CategoryFilter.valueOf(name) } catch(e: Exception) { null }
+            try { com.myperfectoutfit.ui.state.CategoryFilter.valueOf(name) } catch(_: Exception) { null }
         }
         mutableStateListOf<com.myperfectoutfit.ui.state.CategoryFilter>().apply { addAll(saved) }
     }
@@ -471,23 +477,26 @@ fun EditProfileDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = geminiKey,
-                    onValueChange = { geminiKey = it },
-                    label = { Text("Gemini API Key") },
+                HorizontalDivider()
+
+                Text(text = "Visualización de Categorías", style = MaterialTheme.typography.titleSmall)
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (geminiKey.isEmpty()) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation()
-                )
-                TextButton(
-                    onClick = { uriHandler.openUri("https://aistudio.google.com/app/apikey") },
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.height(32.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Obtén tu llave gratuita aquí",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = displayMode == mode,
+                            onClick = { displayMode = mode },
+                            label = { 
+                                Text(when(mode) {
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY -> "Texto"
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY -> "Iconos"
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH -> "Ambos"
+                                })
+                            }
+                        )
+                    }
                 }
 
                 HorizontalDivider()
@@ -559,7 +568,7 @@ fun EditProfileDialog(
                         selectedImageUri?.let { saveProfileImageToInternalStorage(context, it) }
                     } else user.profilePictureUrl
                     val categoriesStr = activeCategories.joinToString(",") { it.name }
-                    onSave(name, email, photoPath, categoriesStr, geminiKey.trim()) 
+                    onSave(name, email, photoPath, categoriesStr, displayMode) 
                 },
                 enabled = name.isNotBlank() && email.contains("@") && activeCategories.isNotEmpty()
             ) {

@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -134,6 +136,20 @@ fun WardrobeScreen(
                 selectedCustomCategoryId = uiState.selectedCustomCategoryId,
                 activeCategories = activeCategories,
                 customCategories = uiState.customCategories,
+                counts = mapOf(
+                    CategoryFilter.SHIRTS to uiState.shirts.size,
+                    CategoryFilter.PANTS to uiState.pants.size,
+                    CategoryFilter.SHOES to uiState.shoes.size,
+                    CategoryFilter.TIES to uiState.ties.size,
+                    CategoryFilter.WATCHES to uiState.watches.size,
+                    CategoryFilter.FRAGRANCES to uiState.fragrances.size,
+                    CategoryFilter.JACKETS to uiState.jackets.size,
+                    CategoryFilter.BAGS to uiState.bags.size,
+                    CategoryFilter.DRESSES to uiState.dresses.size,
+                    CategoryFilter.SKIRTS to uiState.skirts.size
+                ),
+                customCounts = uiState.customGarments.groupBy { it.categoryId }.mapValues { it.value.size },
+                displayMode = uiState.user?.categoryDisplayMode ?: com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH,
                 onCategorySelected = { viewModel.selectCategory(it) },
                 onCustomCategorySelected = { viewModel.selectCustomCategory(it) },
                 onAddCategoryRequested = { showAddCategoryDialog = true },
@@ -981,6 +997,9 @@ fun CategoryFilterBar(
     selectedCustomCategoryId: Long?,
     activeCategories: List<CategoryFilter>,
     customCategories: List<CustomCategoryEntity>,
+    counts: Map<CategoryFilter, Int>,
+    customCounts: Map<Long, Int>,
+    displayMode: com.myperfectoutfit.data.local.enums.CategoryDisplayMode = com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH,
     onCategorySelected: (CategoryFilter) -> Unit,
     onCustomCategorySelected: (Long) -> Unit,
     onAddCategoryRequested: () -> Unit,
@@ -998,7 +1017,42 @@ fun CategoryFilterBar(
             FilterChip(
                 selected = selectedCategory == category && selectedCustomCategoryId == null,
                 onClick = { onCategorySelected(category) },
-                label = { Text(category.displayName) }
+                label = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY) {
+                            Icon(
+                                imageVector = category.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        
+                        if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY) {
+                            if (displayMode == com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Text(category.displayName)
+                        }
+                        
+                        if (category != CategoryFilter.ALL) {
+                            val count = counts[category] ?: 0
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = if (selectedCategory == category && selectedCustomCategoryId == null) 
+                                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
+                                else 
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            ) {
+                                Text(
+                                    text = count.toString(),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
             )
         }
         
@@ -1008,7 +1062,40 @@ fun CategoryFilterBar(
                 FilterChip(
                     selected = selectedCustomCategoryId == category.id,
                     onClick = { }, 
-                    label = { Text(category.name) }
+                    label = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY) {
+                                Icon(
+                                    imageVector = Icons.Default.Category,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY) {
+                                if (displayMode == com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(category.name)
+                            }
+
+                            val count = customCounts[category.id] ?: 0
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = if (selectedCustomCategoryId == category.id) 
+                                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
+                                else 
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            ) {
+                                Text(
+                                    text = count.toString(),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
                 )
                 
                 Box(

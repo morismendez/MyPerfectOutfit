@@ -63,6 +63,9 @@ class BackupManager @Inject constructor(
 
     suspend fun restoreFromZip(uri: Uri): Boolean = withContext(Dispatchers.IO) {
         try {
+            // Asegurarse de cerrar la base de datos antes de sobreescribir los archivos
+            AppDatabase.closeInstance()
+            
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 ZipInputStream(BufferedInputStream(inputStream)).use { zis ->
                     var entry: ZipEntry? = zis.nextEntry

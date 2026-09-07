@@ -29,7 +29,7 @@ import com.myperfectoutfit.data.local.entities.*
         CustomGarmentEntity::class,
         StyleRuleEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -113,6 +113,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `users` ADD COLUMN `categoryDisplayMode` TEXT NOT NULL DEFAULT 'BOTH'")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -123,6 +129,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, 
                     MIGRATION_4_5, MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13,
+                    MIGRATION_13_14,
                     object : Migration(9, 11) { override fun migrate(db: SupportSQLiteDatabase) {} },
                     object : Migration(10, 11) { override fun migrate(db: SupportSQLiteDatabase) {} }
                 )

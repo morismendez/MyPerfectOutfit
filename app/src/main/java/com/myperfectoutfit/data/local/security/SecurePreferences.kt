@@ -22,15 +22,18 @@ class SecurePreferences @Inject constructor(@ApplicationContext context: Context
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun saveGeminiApiKey(apiKey: String) {
-        sharedPreferences.edit().putString("gemini_api_key", apiKey).apply()
+    fun saveAiApiKey(apiKey: String) {
+        sharedPreferences.edit().putString("ai_api_key", apiKey).apply()
     }
 
-    fun getGeminiApiKey(): String? {
-        return sharedPreferences.getString("gemini_api_key", null)
+    fun getAiApiKey(): String? {
+        return sharedPreferences.getString("ai_api_key", null)
     }
 
-    fun clearGeminiApiKey() {
-        sharedPreferences.edit().remove("gemini_api_key").apply()
+    fun clearAiApiKey() {
+        sharedPreferences.edit().remove("ai_api_key").apply()
     }
+
+    // Deprecated methods for compatibility
+    fun getGeminiApiKey(): String? = getAiApiKey()
 }

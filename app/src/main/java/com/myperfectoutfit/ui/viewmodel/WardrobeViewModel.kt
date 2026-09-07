@@ -6,19 +6,18 @@ import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.repository.WardrobeRepository
 import com.myperfectoutfit.ui.state.CategoryFilter
 import com.myperfectoutfit.ui.state.WardrobeUiState
-import com.myperfectoutfit.data.remote.GeminiOutfitService
+import com.myperfectoutfit.data.remote.AzureOutfitService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class WardrobeViewModel @Inject constructor(
     private val repository: WardrobeRepository,
-    private val geminiService: GeminiOutfitService
+    private val azureService: AzureOutfitService
 ) : ViewModel() {
 
     // Filtro seleccionado en la UI
@@ -30,6 +29,7 @@ class WardrobeViewModel @Inject constructor(
         .flatMapLatest { user ->
             val userId = user?.id ?: 1L
 
+            @Suppress("UNCHECKED_CAST")
             combine(
                 _selectedCategory,
                 _selectedCustomCategoryId,
@@ -328,7 +328,10 @@ suspend fun analyzeGarment(
     categoryName: String? = null,
     customAttributes: String? = null
 ): String? {
-    val userKey = repository.getGeminiApiKey()
-    return geminiService.analyzeGarmentImage(bitmap, categoryName, customAttributes, userKey)
+    return azureService.analyzeGarmentImage(
+        bitmap = bitmap, 
+        categoryName = categoryName, 
+        customAttributes = customAttributes
+    )
 }
 }

@@ -3,7 +3,7 @@ package com.myperfectoutfit.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myperfectoutfit.data.local.entities.*
-import com.myperfectoutfit.data.remote.GeminiOutfitService
+import com.myperfectoutfit.data.remote.AzureOutfitService
 import com.myperfectoutfit.data.repository.WardrobeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -42,7 +42,7 @@ data class AiOutfitUiState(
 @HiltViewModel
 class OutfitViewModel @Inject constructor(
     private val repository: WardrobeRepository,
-    private val geminiService: GeminiOutfitService
+    private val azureService: AzureOutfitService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiOutfitUiState())
@@ -163,7 +163,7 @@ class OutfitViewModel @Inject constructor(
                 }.map { it.toString() }
 
                 // Solicitamos la recomendación usando la instrucción final (nueva o persistida)
-                val aiRecommendation = geminiService.generateOutfitRecommendation(
+                val aiRecommendation = azureService.generateOutfitRecommendation(
                     shirts = shirts,
                     pants = pants,
                     shoes = shoes,
@@ -178,11 +178,13 @@ class OutfitViewModel @Inject constructor(
                     styleRules = activeRules,
                     baseGarments = _uiState.value.baseGarments,
                     userInstruction = finalInstruction,
-                    excludeIds = alreadyRecommendedIds,
-                    userApiKey = repository.getGeminiApiKey()
+                    excludeIds = alreadyRecommendedIds
                 )
 
-                val regex = """SELECCION_IDS: SHIRT=(.*?), PANT=(.*?), SHOE=(.*?), TIE=(.*?), WATCH=(.*?), FRAGRANCE=(.*?), JACKET=(.*?), BAG=(.*?), DRESS=(.*?), SKIRT=(.*)""".toRegex()
+                android.util.Log.d("OutfitParser", "Raw AI Response: $aiRecommendation")
+
+                // Regex ultra-flexible para capturar los IDs en cualquier formato (con o sin espacios, mayúsculas o minúsculas)
+                val regex = """SELECCION_IDS:?\s*SHIRT=([^,\s]+),?\s*PANT=([^,\s]+),?\s*SHOE=([^,\s]+),?\s*TIE=([^,\s]+),?\s*WATCH=([^,\s]+),?\s*FRAGRANCE=([^,\s]+),?\s*JACKET=([^,\s]+),?\s*BAG=([^,\s]+),?\s*DRESS=([^,\s]+),?\s*SKIRT=([^,\s.]+)""".toRegex(RegexOption.IGNORE_CASE)
                 val matchResult = regex.find(aiRecommendation)
                 
                 var cleanText = aiRecommendation
@@ -198,19 +200,61 @@ class OutfitViewModel @Inject constructor(
                 var selectedSkirt: SkirtEntity? = null
 
                 matchResult?.let { result ->
+                    // Limpiamos el texto eliminando la línea de IDs y cualquier formato markdown residual
                     cleanText = aiRecommendation.replace(result.value, "")
-                        .replace("**", "").replace("*", "").trim()
+                        .replace(Regex("""#+\s*"""), "") // Quitar encabezados h1, h2...
+                        .replace("**", "")
+                        .replace("*", "")
+                        .replace(Regex("""\(?ID:?\s*\d+\)?""", RegexOption.IGNORE_CASE), "") // Quitar (ID 1), ID: 1, etc.
+                        .replace(Regex("""\(\w+\s+ID:?\s*\d+\)""", RegexOption.IGNORE_CASE), "") // Quitar (SHOE ID 2)
+                        .trim()
                     
-                    selectedShirt = shirts.find { it.id == result.groupValues[1].toLongOrNull() }
-                    selectedPant = pants.find { it.id == result.groupValues[2].toLongOrNull() }
-                    selectedShoe = shoes.find { it.id == result.groupValues[3].toLongOrNull() }
-                    selectedTie = ties.find { it.id == result.groupValues[4].toLongOrNull() }
-                    selectedWatch = watches.find { it.id == result.groupValues[5].toLongOrNull() }
-                    selectedFragrance = fragrances.find { it.id == result.groupValues[6].toLongOrNull() }
-                    selectedJacket = jackets.find { it.id == result.groupValues[7].toLongOrNull() }
-                    selectedBag = bags.find { it.id == result.groupValues[8].toLongOrNull() }
-                    selectedDress = dresses.find { it.id == result.groupValues[9].toLongOrNull() }
-                    selectedSkirt = skirts.find { it.id == result.groupValues[10].toLongOrNull() }
+                    // Función auxiliar para limpiar IDs de caracteres como puntos o espacios
+                    fun parseId(value: String): Long? = value.replace(Regex("[^0-9]"), "").toLongOrNull()
+                    
+                    selectedShirt = shirts.find { it.id == parseId(result.groupValues[1]) }
+                    selectedPant = pants.find { it.id == parseId(result.groupValues[2]) }
+                    selectedShoe = shoes.find { it.id == parseId(result.groupValues[3]) }
+                    selectedTie = ties.find { it.id == parseId(result.groupValues[4]) }
+                    selectedWatch = watches.find { it.id == parseId(result.groupValues[5]) }
+                    selectedFragrance = fragrances.find { it.id == parseId(result.groupValues[6]) }
+                    selectedJacket = jackets.find { it.id == parseId(result.groupValues[7]) }
+                    selectedBag = bags.find { it.id == parseId(result.groupValues[8]) }
+                    selectedDress = dresses.find { it.id == parseId(result.groupValues[9]) }
+                    selectedSkirt = skirts.find { it.id == parseId(result.groupValues[10]) }
+                }
+
+                // Búsqueda manual de IDs si el regex falla por formato
+                if (matchResult == null && aiRecommendation.contains("SHIRT=", ignoreCase = true)) {
+                    android.util.Log.w("OutfitParser", "Regex failed, attempting manual extraction")
+                    val tags = listOf("SHIRT", "PANT", "SHOE", "TIE", "WATCH", "FRAGRANCE", "JACKET", "BAG", "DRESS", "SKIRT")
+                    tags.forEach { tag ->
+                        val idValue = Regex("""$tag=([^\s,.]+)""", RegexOption.IGNORE_CASE)
+                            .find(aiRecommendation)?.groupValues?.get(1)
+                        
+                        val id = idValue?.replace(Regex("[^0-9]"), "")?.toLongOrNull()
+                        if (id != null) {
+                            when (tag) {
+                                "SHIRT" -> selectedShirt = shirts.find { it.id == id }
+                                "PANT" -> selectedPant = pants.find { it.id == id }
+                                "SHOE" -> selectedShoe = shoes.find { it.id == id }
+                                "TIE" -> selectedTie = ties.find { it.id == id }
+                                "WATCH" -> selectedWatch = watches.find { it.id == id }
+                                "FRAGRANCE" -> selectedFragrance = fragrances.find { it.id == id }
+                                "JACKET" -> selectedJacket = jackets.find { it.id == id }
+                                "BAG" -> selectedBag = bags.find { it.id == id }
+                                "DRESS" -> selectedDress = dresses.find { it.id == id }
+                                "SKIRT" -> selectedSkirt = skirts.find { it.id == id }
+                            }
+                        }
+                    }
+                    // Limpiamos la línea de IDs del texto final
+                    cleanText = aiRecommendation.split(Regex("SELECCION_IDS", RegexOption.IGNORE_CASE))[0].trim()
+                }
+
+                // Fallback final si todo falla
+                if (cleanText.isBlank()) {
+                    cleanText = if (aiRecommendation.isNotBlank()) aiRecommendation else "El asesor no pudo generar una recomendación en este momento. Por favor, intenta de nuevo en unos segundos."
                 }
 
                 val newRecommendation = RecommendedOutfit(

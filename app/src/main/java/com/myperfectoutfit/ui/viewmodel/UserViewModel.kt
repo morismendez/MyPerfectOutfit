@@ -3,6 +3,7 @@ package com.myperfectoutfit.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myperfectoutfit.data.local.entities.UserEntity
+import com.myperfectoutfit.data.local.entities.StyleRuleEntity
 import com.myperfectoutfit.data.repository.WardrobeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,8 +12,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class UserUiState(
-    val user: com.myperfectoutfit.data.local.entities.UserEntity? = null,
-    val styleRules: List<com.myperfectoutfit.data.local.entities.StyleRuleEntity> = emptyList(),
+    val user: UserEntity? = null,
+    val styleRules: List<StyleRuleEntity> = emptyList(),
     val isLoading: Boolean = true
 )
 
@@ -35,7 +36,12 @@ class UserViewModel @Inject constructor(
             initialValue = UserUiState()
         )
 
-    fun registerUser(name: String, email: String, profilePictureUrl: String? = null, activeCategories: String, geminiApiKey: String? = null) {
+    fun registerUser(
+        name: String, 
+        email: String, 
+        profilePictureUrl: String? = null, 
+        activeCategories: String
+    ) {
         viewModelScope.launch {
             repository.saveUser(
                 UserEntity(
@@ -45,32 +51,37 @@ class UserViewModel @Inject constructor(
                     activeCategories = activeCategories
                 )
             )
-            geminiApiKey?.let { repository.saveGeminiApiKey(it) }
         }
     }
 
-    fun updateUser(name: String, email: String, profilePictureUrl: String?, activeCategories: String? = null, geminiApiKey: String? = null) {
+    fun updateUser(
+        name: String, 
+        email: String, 
+        profilePictureUrl: String?, 
+        activeCategories: String? = null,
+        displayMode: com.myperfectoutfit.data.local.enums.CategoryDisplayMode? = null
+    ) {
         viewModelScope.launch {
             val currentUser = uiState.value.user ?: return@launch
-            repository.saveUser(
+            repository.updateUser(
                 currentUser.copy(
                     name = name,
                     email = email,
                     profilePictureUrl = profilePictureUrl ?: currentUser.profilePictureUrl,
-                    activeCategories = activeCategories ?: currentUser.activeCategories
+                    activeCategories = activeCategories ?: currentUser.activeCategories,
+                    categoryDisplayMode = displayMode ?: currentUser.categoryDisplayMode
                 )
             )
-            geminiApiKey?.let { repository.saveGeminiApiKey(it) }
         }
     }
     
-    fun getGeminiApiKey(): String? = repository.getGeminiApiKey()
+    fun getAiApiKey(): String? = repository.getAiApiKey()
 
     fun addStyleRule(title: String, description: String) {
         viewModelScope.launch {
             val userId = uiState.value.user?.id ?: return@launch
             repository.insertStyleRule(
-                com.myperfectoutfit.data.local.entities.StyleRuleEntity(
+                StyleRuleEntity(
                     userId = userId,
                     title = title,
                     description = description
@@ -85,7 +96,7 @@ class UserViewModel @Inject constructor(
         }
     }
 
-    fun deleteStyleRule(rule: com.myperfectoutfit.data.local.entities.StyleRuleEntity) {
+    fun deleteStyleRule(rule: StyleRuleEntity) {
         viewModelScope.launch {
             repository.deleteStyleRule(rule)
         }

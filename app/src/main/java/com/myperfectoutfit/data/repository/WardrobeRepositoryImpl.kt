@@ -41,11 +41,15 @@ class WardrobeRepositoryImpl(
         userDao.insertUser(user)
     }
 
-    // --- Seguridad (API Key) ---
-    override fun getGeminiApiKey(): String? = securePrefs.getGeminiApiKey()
-    override fun saveGeminiApiKey(apiKey: String) = securePrefs.saveGeminiApiKey(apiKey)
-    override fun clearGeminiApiKey() = securePrefs.clearGeminiApiKey()
+    override suspend fun updateUser(user: UserEntity) = withContext(Dispatchers.IO) {
+        userDao.updateUser(user)
+    }
 
+    // --- Seguridad (AI API Config) ---
+    override fun getAiApiKey(): String? = securePrefs.getAiApiKey()
+    override fun saveAiApiKey(apiKey: String) = securePrefs.saveAiApiKey(apiKey)
+    override fun clearAiApiKey() = securePrefs.clearAiApiKey()
+    
     override suspend fun createBackup(): java.io.File? = backupManager.createBackupZip()
     override suspend fun restoreBackup(uri: android.net.Uri): Boolean = backupManager.restoreFromZip(uri)
 

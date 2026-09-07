@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("com.google.gms.google-services")
 }
 
 val localProperties = Properties()
@@ -26,8 +27,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+        val azureKey = localProperties.getProperty("AZURE_AI_KEY") ?: ""
+        val azureEndpoint = localProperties.getProperty("AZURE_AI_ENDPOINT") ?: ""
+        val azureDeployment = localProperties.getProperty("AZURE_AI_DEPLOYMENT") ?: ""
+        
+        buildConfigField("String", "AZURE_AI_KEY", "\"$azureKey\"")
+        buildConfigField("String", "AZURE_AI_ENDPOINT", "\"$azureEndpoint\"")
+        buildConfigField("String", "AZURE_AI_DEPLOYMENT", "\"$azureDeployment\"")
     }
     buildFeatures {
         buildConfig = true
@@ -91,10 +97,20 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 //Coil (AsyncImage)
     implementation("io.coil-kt:coil-compose:2.6.0")
-// Google AI SDK para Android (Gemini)
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+// Azure AI (Retrofit y OkHttp para control manual)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
+
 // Seguridad (EncryptedSharedPreferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.2.0"))
+    implementation("com.google.firebase:firebase-config-ktx")
+    implementation("com.google.firebase:firebase-functions-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     // Google Drive & Auth
     implementation("com.google.android.gms:play-services-auth:21.2.0")

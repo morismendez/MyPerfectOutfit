@@ -10,12 +10,13 @@ interface WardrobeRepository {
     // --- Usuario ---
     fun getPrimaryUser(): Flow<UserEntity?>
     suspend fun saveUser(user: UserEntity): Long
+    suspend fun updateUser(user: UserEntity)
     
     // --- Seguridad (API Key) ---
-    fun getGeminiApiKey(): String?
-    fun saveGeminiApiKey(apiKey: String)
-    fun clearGeminiApiKey()
-
+    fun getAiApiKey(): String?
+    fun saveAiApiKey(apiKey: String)
+    fun clearAiApiKey()
+    
     // --- Respaldo y Restauración ---
     suspend fun createBackup(): java.io.File?
     suspend fun restoreBackup(uri: android.net.Uri): Boolean

@@ -41,7 +41,6 @@ fun RegistrationScreen(
     val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var apiKey by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -203,29 +202,6 @@ fun RegistrationScreen(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-
-        OutlinedTextField(
-            value = apiKey,
-            onValueChange = { apiKey = it },
-            label = { Text("Gemini API Key (Opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = if (apiKey.isEmpty()) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation()
-        )
-        TextButton(
-            onClick = { uriHandler.openUri("https://aistudio.google.com/app/apikey") },
-            modifier = Modifier.align(Alignment.Start)
-        ) {
-            Text(
-                text = "Obtén tu llave gratuita en Google AI Studio aquí",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
@@ -269,7 +245,12 @@ fun RegistrationScreen(
                     saveProfileImageToInternalStorage(context, uri)
                 }
                 val categoriesStr = activeCategories.joinToString(",") { it.name }
-                viewModel.registerUser(name, email, profilePicPath, categoriesStr, apiKey.trim()) 
+                viewModel.registerUser(
+                    name = name, 
+                    email = email, 
+                    profilePictureUrl = profilePicPath, 
+                    activeCategories = categoriesStr
+                ) 
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = name.isNotBlank() && email.contains("@") && activeCategories.isNotEmpty()

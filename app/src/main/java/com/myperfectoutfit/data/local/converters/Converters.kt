@@ -1,6 +1,7 @@
 package com.myperfectoutfit.data.local.converters
 
 import androidx.room.TypeConverter
+import com.myperfectoutfit.data.local.enums.CategoryDisplayMode
 import com.myperfectoutfit.data.local.enums.LaundryState
 
 class Converters {
@@ -17,6 +18,22 @@ class Converters {
                 enumValueOf<LaundryState>(it)
             } catch (e: IllegalArgumentException) {
                 LaundryState.CLEAN
+            }
+        }
+    }
+
+    @TypeConverter
+    fun fromDisplayMode(value: CategoryDisplayMode?): String? {
+        return value?.name
+    }
+
+    @TypeConverter
+    fun toDisplayMode(value: String?): CategoryDisplayMode? {
+        return value?.let {
+            try {
+                enumValueOf<CategoryDisplayMode>(it)
+            } catch (e: IllegalArgumentException) {
+                CategoryDisplayMode.BOTH
             }
         }
     }
