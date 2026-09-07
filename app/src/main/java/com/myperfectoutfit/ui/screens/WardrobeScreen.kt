@@ -1978,11 +1978,11 @@ private fun analyzeImage(
                 }
             } else ""
 
-            // Redimensionar para optimizar IA (Max 512px para mayor velocidad)
-            val scaledBitmap = if (bitmap.width > 512 || bitmap.height > 512) {
+            // Redimensionar para optimizar IA (Max 1024px para mayor detalle en etiquetas)
+            val scaledBitmap = if (bitmap.width > 1024 || bitmap.height > 1024) {
                 val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
-                val newWidth = if (ratio > 1) 512 else (512 * ratio).toInt()
-                val newHeight = if (ratio > 1) (512 / ratio).toInt() else 512
+                val newWidth = if (ratio > 1) 1024 else (1024 * ratio).toInt()
+                val newHeight = if (ratio > 1) (1024 / ratio).toInt() else 1024
                 Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
             } else bitmap
 

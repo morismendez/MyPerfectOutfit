@@ -214,7 +214,7 @@ class AzureOutfitService @Inject constructor() {
             4. IMPORTANTE: Todos los valores de los campos JSON deben estar en idioma $languageName.
         """.trimIndent()
 
-        val userPromptText = "Analiza esta prenda ${categoryName ?: ""}. $detectPrompt"
+        val userPromptText = "Analiza esta prenda ${categoryName ?: ""}. Pon especial atención en logotipos o etiquetas para identificar la marca (brand). $detectPrompt"
 
         val jsonBody = JSONObject().apply {
             put("model", BuildConfig.AZURE_AI_DEPLOYMENT)
@@ -278,7 +278,8 @@ class AzureOutfitService @Inject constructor() {
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val out = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
+        // Calidad 85 para preservar detalles de etiquetas y texturas
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
         return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
 }
