@@ -263,9 +263,20 @@ class OutfitViewModel @Inject constructor(
                     cleanText = aiRecommendation.split(Regex("SELECCION_IDS", RegexOption.IGNORE_CASE))[0].trim()
                 }
 
-                // Fallback final si todo falla
-                if (cleanText.isBlank()) {
-                    cleanText = if (aiRecommendation.isNotBlank()) aiRecommendation else "El asesor no pudo generar una recomendación en este momento. Por favor, intenta de nuevo en unos segundos."
+                // VALIDACIÓN CRÍTICA: Si no pudimos extraer NINGUNA prenda, la respuesta no es válida.
+                if (selectedShirt == null && selectedPant == null && selectedShoe == null && selectedDress == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "La IA no pudo seleccionar prendas válidas. Por favor, intenta de nuevo."
+                        )
+                    }
+                    return@launch
+                }
+
+                // Fallback de texto si la explicación es muy corta o inexistente
+                if (cleanText.length < 10) {
+                    cleanText = "Basado en tu inventario, esta es la mejor combinación para hoy considerando el estilo y la armonía de colores."
                 }
 
                 val newRecommendation = RecommendedOutfit(
