@@ -16,7 +16,7 @@ interface SkirtDao {
     suspend fun insertSkirt(skirt: SkirtEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSkirts(skirts: List<SkirtEntity>)
+    suspend fun insertSkirts(skirts: List<SkirtEntity>): List<Long>
 
     @Query("SELECT * FROM skirts WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")
     fun getCleanSkirts(userId: Long): Flow<List<SkirtEntity>>

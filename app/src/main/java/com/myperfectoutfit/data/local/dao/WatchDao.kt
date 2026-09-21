@@ -15,7 +15,7 @@ interface WatchDao {
     suspend fun insertWatch(watch: WatchEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWatches(watches: List<WatchEntity>)
+    suspend fun insertWatches(watches: List<WatchEntity>): List<Long>
 
     // Obtiene los relojes disponibles
     @Query("SELECT * FROM watches WHERE user_id = :userId AND isAvailable = 1 ORDER BY code ASC")

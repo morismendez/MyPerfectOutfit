@@ -16,7 +16,7 @@ interface TieDao {
     suspend fun insertTie(tie: TieEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTies(ties: List<TieEntity>)
+    suspend fun insertTies(ties: List<TieEntity>): List<Long>
 
     // Obtiene únicamente las corbatas limpias y disponibles
     @Query("SELECT * FROM `ties` WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")

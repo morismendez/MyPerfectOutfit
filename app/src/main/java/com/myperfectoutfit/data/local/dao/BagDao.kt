@@ -15,7 +15,7 @@ interface BagDao {
     suspend fun insertBag(bag: BagEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBags(bags: List<BagEntity>)
+    suspend fun insertBags(bags: List<BagEntity>): List<Long>
 
     @Query("SELECT * FROM bags WHERE user_id = :userId AND isAvailable = 1 ORDER BY code ASC")
     fun getAvailableBags(userId: Long): Flow<List<BagEntity>>

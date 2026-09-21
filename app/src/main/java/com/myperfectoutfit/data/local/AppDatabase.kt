@@ -27,9 +27,12 @@ import com.myperfectoutfit.data.local.entities.*
         SkirtEntity::class,
         CustomCategoryEntity::class,
         CustomGarmentEntity::class,
-        StyleRuleEntity::class
+        StyleRuleEntity::class,
+        PlannedOutfitEntity::class,
+        SuitcaseEntity::class,
+        ChatMessageEntity::class
     ],
-    version = 14,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -50,6 +53,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun skirtDao(): SkirtDao
     abstract fun customDao(): CustomCategoryDao
     abstract fun ruleDao(): StyleRuleDao
+    abstract fun plannedOutfitDao(): PlannedOutfitDao
+    abstract fun suitcaseDao(): SuitcaseDao
+    abstract fun chatMessageDao(): ChatMessageDao
 
     companion object {
         @Volatile
@@ -119,6 +125,43 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `planned_outfits` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_id` INTEGER NOT NULL, `dateString` TEXT NOT NULL, `shirtId` INTEGER, `pantId` INTEGER, `shoeId` INTEGER, `tieId` INTEGER, `watchId` INTEGER, `fragranceId` INTEGER, `jacketId` INTEGER, `bagId` INTEGER, `dressId` INTEGER, `skirtId` INTEGER, `customGarmentIds` TEXT, `notes` TEXT, `isConfirmed` INTEGER NOT NULL, FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+            }
+        }
+
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `suitcases` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_id` INTEGER NOT NULL, `tripName` TEXT NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `suitcaseType` TEXT NOT NULL, `tripStyle` TEXT NOT NULL, `specialEvents` TEXT NOT NULL, `garmentIds` TEXT NOT NULL, `aiSuggestions` TEXT, `createdAt` INTEGER NOT NULL, FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+            }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `suitcases` ADD COLUMN `missingSuggestions` TEXT")
+                db.execSQL("ALTER TABLE `suitcases` ADD COLUMN `essentials` TEXT")
+            }
+        }
+
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `suitcases` ADD COLUMN `isCompleted` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `chat_messages` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_id` INTEGER NOT NULL, `text` TEXT NOT NULL, `isUser` INTEGER NOT NULL, `imageUri` TEXT, `timestamp` INTEGER NOT NULL, FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+            }
+        }
+
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `chat_messages` ADD COLUMN `suggestedGarmentIds` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -129,7 +172,8 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, 
                     MIGRATION_4_5, MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13,
-                    MIGRATION_13_14,
+                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+                    MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
                     object : Migration(9, 11) { override fun migrate(db: SupportSQLiteDatabase) {} },
                     object : Migration(10, 11) { override fun migrate(db: SupportSQLiteDatabase) {} }
                 )

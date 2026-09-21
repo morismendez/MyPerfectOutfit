@@ -16,7 +16,7 @@ interface ShirtDao {
     suspend fun insertShirt(shirt: ShirtEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertShirts(shirts: List<ShirtEntity>)
+    suspend fun insertShirts(shirts: List<ShirtEntity>): List<Long>
 
     // Filtra únicamente camisas disponibles en el armario del usuario
     @Query("SELECT * FROM shirts WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")

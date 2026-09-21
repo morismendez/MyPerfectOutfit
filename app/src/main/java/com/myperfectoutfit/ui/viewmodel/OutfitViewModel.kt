@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.remote.AzureOutfitService
+import com.myperfectoutfit.data.repository.SuitcaseRepository
 import com.myperfectoutfit.data.repository.WardrobeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -36,12 +37,15 @@ data class AiOutfitUiState(
     val baseGarments: List<Any> = emptyList(),
     val availableGarments: Map<String, List<Any>> = emptyMap(),
     val isOutfitConfirmed: Boolean = false,
+    val isTripModeActive: Boolean = false,
+    val activeTripName: String? = null,
     val errorMessage: String? = null
 )
 
 @HiltViewModel
 class OutfitViewModel @Inject constructor(
     private val repository: WardrobeRepository,
+    private val suitcaseRepository: SuitcaseRepository,
     private val azureService: AzureOutfitService
 ) : ViewModel() {
 
@@ -57,8 +61,12 @@ class OutfitViewModel @Inject constructor(
             repository.getPrimaryUser().firstOrNull()?.let { user ->
                 val userId = user.id
                 val activeCats = user.activeCategories.split(",")
+                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(java.util.Date())
 
                 combine(
+                    suitcaseRepository.getActiveSuitcase(userId, today),
                     if (activeCats.contains("SHIRTS")) repository.getCleanShirts(userId) else flowOf(emptyList()),
                     if (activeCats.contains("PANTS")) repository.getCleanPants(userId) else flowOf(emptyList()),
                     if (activeCats.contains("SHOES")) repository.getAvailableShoes(userId) else flowOf(emptyList()),
@@ -69,23 +77,69 @@ class OutfitViewModel @Inject constructor(
                     if (activeCats.contains("BAGS")) repository.getAvailableBags(userId) else flowOf(emptyList()),
                     if (activeCats.contains("DRESSES")) repository.getCleanDresses(userId) else flowOf(emptyList()),
                     if (activeCats.contains("SKIRTS")) repository.getCleanSkirts(userId) else flowOf(emptyList()),
-                    repository.getAllCustomGarments(userId) // También incluimos personalizadas
+                    repository.getAllCustomGarments(userId)
                 ) { array ->
-                    mapOf(
-                        "SHIRTS" to array[0],
-                        "PANTS" to array[1],
-                        "SHOES" to array[2],
-                        "TIES" to array[3],
-                        "WATCHES" to array[4],
-                        "FRAGRANCES" to array[5],
-                        "JACKETS" to array[6],
-                        "BAGS" to array[7],
-                        "DRESSES" to array[8],
-                        "SKIRTS" to array[9],
-                        "PERSONALIZADO" to array[10]
+                    val activeSuitcase = array[0] as? SuitcaseEntity
+                    val suitcaseItemIds = activeSuitcase?.garmentIds?.split(",")?.map { it.split(":")[0] }?.toSet() ?: emptySet()
+
+                    fun <T> filterBySuitcase(items: List<T>, type: String): List<T> {
+                        if (activeSuitcase == null) return items
+                        return items.filter { item ->
+                            val id = when(item) {
+                                is ShirtEntity -> "SHIRT_${item.id}"
+                                is PantEntity -> "PANT_${item.id}"
+                                is ShoeEntity -> "SHOE_${item.id}"
+                                is JacketEntity -> "JACKET_${item.id}"
+                                is DressEntity -> "DRESS_${item.id}"
+                                is SkirtEntity -> "SKIRT_${item.id}"
+                                is TieEntity -> "TIE_${item.id}"
+                                is BagEntity -> "BAG_${item.id}"
+                                is WatchEntity -> "WATCH_${item.id}"
+                                is CustomGarmentEntity -> "CUSTOM_${item.id}"
+                                else -> ""
+                            }
+                            suitcaseItemIds.contains(id)
+                        }
+                    }
+
+                    // WAIT: I need to re-check the ID format used in SuitcaseViewModel
+                    // In SuitcaseViewModel it was:
+                    // is ShirtEntity -> "SHIRT_${entity.id}"
+                    // is PantEntity -> "PANT_${entity.id}" (entity.id not entity.itemCode)
+                    
+                    val filteredShirts = filterBySuitcase(array[1] as List<ShirtEntity>, "SHIRT")
+                    val filteredPants = filterBySuitcase(array[2] as List<PantEntity>, "PANT")
+                    val filteredShoes = filterBySuitcase(array[3] as List<ShoeEntity>, "SHOE")
+                    val filteredTies = filterBySuitcase(array[4] as List<TieEntity>, "TIE")
+                    val filteredWatches = filterBySuitcase(array[5] as List<WatchEntity>, "WATCH")
+                    val filteredFragrances = array[6] as List<FragranceEntity> // Fragrances usually not in suitcase
+                    val filteredJackets = filterBySuitcase(array[7] as List<JacketEntity>, "JACKET")
+                    val filteredBags = filterBySuitcase(array[8] as List<BagEntity>, "BAG")
+                    val filteredDresses = filterBySuitcase(array[9] as List<DressEntity>, "DRESS")
+                    val filteredSkirts = filterBySuitcase(array[10] as List<SkirtEntity>, "SKIRT")
+                    val filteredCustoms = filterBySuitcase(array[11] as List<CustomGarmentEntity>, "CUSTOM")
+
+                    val garmentsMap = mapOf(
+                        "SHIRTS" to filteredShirts,
+                        "PANTS" to filteredPants,
+                        "SHOES" to filteredShoes,
+                        "TIES" to filteredTies,
+                        "WATCHES" to filteredWatches,
+                        "FRAGRANCES" to filteredFragrances,
+                        "JACKETS" to filteredJackets,
+                        "BAGS" to filteredBags,
+                        "DRESSES" to filteredDresses,
+                        "SKIRTS" to filteredSkirts,
+                        "PERSONALIZADO" to filteredCustoms
                     )
-                }.collect { garmentsMap ->
-                    _uiState.update { it.copy(availableGarments = garmentsMap) }
+                    
+                    Pair(garmentsMap, activeSuitcase)
+                }.collect { (garmentsMap, suitcase) ->
+                    _uiState.update { it.copy(
+                        availableGarments = garmentsMap,
+                        isTripModeActive = suitcase != null,
+                        activeTripName = suitcase?.tripName
+                    ) }
                 }
             }
         }
@@ -127,20 +181,21 @@ class OutfitViewModel @Inject constructor(
                 ) 
             }
 
+            val available = _uiState.value.availableGarments
+            val shirts = (available["SHIRTS"] as? List<ShirtEntity>) ?: emptyList()
+            val pants = (available["PANTS"] as? List<PantEntity>) ?: emptyList()
+            val shoes = (available["SHOES"] as? List<ShoeEntity>) ?: emptyList()
+            val ties = (available["TIES"] as? List<TieEntity>) ?: emptyList()
+            val watches = (available["WATCHES"] as? List<WatchEntity>) ?: emptyList()
+            val fragrances = (available["FRAGRANCES"] as? List<FragranceEntity>) ?: emptyList()
+            val jackets = (available["JACKETS"] as? List<JacketEntity>) ?: emptyList()
+            val bags = (available["BAGS"] as? List<BagEntity>) ?: emptyList()
+            val dresses = (available["DRESSES"] as? List<DressEntity>) ?: emptyList()
+            val skirts = (available["SKIRTS"] as? List<SkirtEntity>) ?: emptyList()
+            val customs = (available["PERSONALIZADO"] as? List<CustomGarmentEntity>) ?: emptyList()
+
             repository.getPrimaryUser().firstOrNull()?.let { user ->
                 val userId = user.id
-                val activeCats = user.activeCategories.split(",")
-
-                val shirts = if (activeCats.contains("SHIRTS")) repository.getCleanShirts(userId).firstOrNull() ?: emptyList() else emptyList()
-                val pants = if (activeCats.contains("PANTS")) repository.getCleanPants(userId).firstOrNull() ?: emptyList() else emptyList()
-                val shoes = if (activeCats.contains("SHOES")) repository.getAvailableShoes(userId).firstOrNull() ?: emptyList() else emptyList()
-                val ties = if (activeCats.contains("TIES")) repository.getCleanTies(userId).firstOrNull() ?: emptyList() else emptyList()
-                val watches = if (activeCats.contains("WATCHES")) repository.getAvailableWatches(userId).firstOrNull() ?: emptyList() else emptyList()
-                val fragrances = if (activeCats.contains("FRAGRANCES")) repository.getAvailableFragrances(userId).firstOrNull() ?: emptyList() else emptyList()
-                val jackets = if (activeCats.contains("JACKETS")) repository.getCleanJackets(userId).firstOrNull() ?: emptyList() else emptyList()
-                val bags = if (activeCats.contains("BAGS")) repository.getAvailableBags(userId).firstOrNull() ?: emptyList() else emptyList()
-                val dresses = if (activeCats.contains("DRESSES")) repository.getCleanDresses(userId).firstOrNull() ?: emptyList() else emptyList()
-                val skirts = if (activeCats.contains("SKIRTS")) repository.getCleanSkirts(userId).firstOrNull() ?: emptyList() else emptyList()
                 val activeRules = repository.getActiveStyleRules(userId).firstOrNull() ?: emptyList()
 
                 if (shirts.isEmpty() && dresses.isEmpty()) {
@@ -174,7 +229,7 @@ class OutfitViewModel @Inject constructor(
                     bags = bags,
                     dresses = dresses,
                     skirts = skirts,
-                    customGarments = repository.getAllCustomGarments(userId).firstOrNull()?.filter { it.laundryState == com.myperfectoutfit.data.local.enums.LaundryState.CLEAN } ?: emptyList(),
+                    customGarments = customs,
                     styleRules = activeRules,
                     baseGarments = _uiState.value.baseGarments,
                     userInstruction = finalInstruction,

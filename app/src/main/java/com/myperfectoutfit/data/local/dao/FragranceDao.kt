@@ -15,7 +15,7 @@ interface FragranceDao {
     suspend fun insertFragrance(fragrance: FragranceEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFragrances(fragrances: List<FragranceEntity>)
+    suspend fun insertFragrances(fragrances: List<FragranceEntity>): List<Long>
 
     // Obtiene las fragancias disponibles
     @Query("SELECT * FROM fragrances WHERE user_id = :userId AND isAvailable = 1 ORDER BY code ASC")

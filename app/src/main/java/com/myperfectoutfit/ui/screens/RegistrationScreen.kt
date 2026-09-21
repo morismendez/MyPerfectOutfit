@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,12 +25,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.ui.viewmodel.UserViewModel
 import android.net.Uri
+import android.widget.Toast
 import java.io.File
 import java.io.FileOutputStream
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.myperfectoutfit.ui.state.CategoryFilter
+import kotlinx.coroutines.launch
 
 import com.myperfectoutfit.ui.components.ImageFramingDialog
 
@@ -39,11 +42,14 @@ fun RegistrationScreen(
     viewModel: UserViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    
+    var isRestoring by remember { mutableStateOf(false) }
     
     // Nuevo estado para el encuadre
     var imageToFrame by remember { mutableStateOf<Uri?>(null) }
@@ -67,6 +73,28 @@ fun RegistrationScreen(
         if (success) imageToFrame = tempCameraUri
     }
 
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                isRestoring = true
+                val success = viewModel.restoreBackupFile(it)
+                isRestoring = false
+                if (success) {
+                    Toast.makeText(context, "Restauración exitosa. Reiniciando...", Toast.LENGTH_LONG).show()
+                    // Reiniciar la app de forma limpia
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    val mainIntent = android.content.Intent.makeRestartActivityTask(intent?.component)
+                    context.startActivity(mainIntent)
+                    Runtime.getRuntime().exit(0)
+                } else {
+                    Toast.makeText(context, "Fallo en la restauración.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -82,6 +110,23 @@ fun RegistrationScreen(
         } else {
             // Se podría mostrar un mensaje
         }
+    }
+
+    if (isRestoring) {
+        AlertDialog(
+            onDismissRequest = { },
+            confirmButton = { },
+            title = { Text("Restaurando datos") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    Text("Esto puede tomar unos segundos...", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        )
     }
 
     if (showSourceDialog) {
@@ -258,7 +303,23 @@ fun RegistrationScreen(
             Text("¡Todo listo!")
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(text = "O si ya eres usuario:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { restoreLauncher.launch("application/zip") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Icon(Icons.Default.CloudDownload, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Restaurar desde un Respaldo")
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 

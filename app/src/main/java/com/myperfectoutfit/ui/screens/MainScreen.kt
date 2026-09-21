@@ -1,15 +1,16 @@
 package com.myperfectoutfit.ui.screens
 
 import android.net.Uri
+import android.os.Build
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
@@ -22,7 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.myperfectoutfit.ui.theme.LoraFontFamily
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
@@ -30,6 +34,8 @@ import coil.compose.AsyncImage
 import java.io.File
 import com.myperfectoutfit.ui.navigation.Screen
 import com.myperfectoutfit.ui.viewmodel.UserViewModel
+import com.myperfectoutfit.ui.viewmodel.TripReviewViewModel
+import com.myperfectoutfit.ui.components.PostTripReviewAssistant
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,9 +49,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    userViewModel: UserViewModel = hiltViewModel()
+    userViewModel: UserViewModel = hiltViewModel(),
+    tripReviewViewModel: TripReviewViewModel = hiltViewModel()
 ) {
     val userState by userViewModel.uiState.collectAsState()
+    val tripReviewState by tripReviewViewModel.uiState.collectAsState()
     val navController = rememberNavController()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -53,6 +61,19 @@ fun MainScreen(
     var showMenu by remember { mutableStateOf(false) }
     
     var tempBackupFile by remember { mutableStateOf<File?>(null) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        // No necesitamos hacer nada especial si no se concede, 
+        // simplemente no recibirá notificaciones.
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
@@ -123,6 +144,14 @@ fun MainScreen(
         return
     }
 
+    if (tripReviewState.finishedTripToReview != null) {
+        PostTripReviewAssistant(
+            suitcase = tripReviewState.finishedTripToReview!!,
+            items = tripReviewState.garmentsToReview,
+            viewModel = tripReviewViewModel
+        )
+    }
+
     val items = listOf(
         Screen.Wardrobe,
         Screen.AiAdvisor,
@@ -143,123 +172,124 @@ fun MainScreen(
             onToggleRule = { id, active -> userViewModel.toggleStyleRule(id, active) },
             onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) },
             onBackup = { onBackup() },
-            onRestore = { restoreLauncher.launch("application/zip") },
-            onDriveBackup = {
-                Toast.makeText(context, "Configura Drive en Google Cloud.", Toast.LENGTH_SHORT).show()
-            }
+            onRestore = { restoreLauncher.launch("application/zip") }
         )
     }
 
     Scaffold(
         topBar = {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute = navBackStackEntry?.destination?.route
-            val currentScreen = items.find { it.route == currentRoute } ?: Screen.AiAdvisor
-
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showEditProfile = true }
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().statusBarsPadding()
+                ) {
+                    // Fila 1: Nombre de la App (Centrado)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentAlignment = Alignment.Center
+                        Text(
+                            text = "My Perfect Outfit",
+                            fontFamily = LoraFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Fila 2: Perfil y Menú
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Grupo Izquierdo: Foto + Nombre
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { showEditProfile = true }
                         ) {
-                            if (userState.user?.profilePictureUrl != null) {
-                                AsyncImage(
-                                    model = userState.user?.profilePictureUrl,
-                                    contentDescription = "Perfil",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(8.dp),
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (userState.user?.profilePictureUrl != null) {
+                                    AsyncImage(
+                                        model = userState.user?.profilePictureUrl,
+                                        contentDescription = "Perfil",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
                                     )
+                                } else {
+                                    Surface(
+                                        modifier = Modifier.fillMaxSize(),
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(6.dp),
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        
-                        Spacer(modifier = Modifier.width(12.dp))
-                        
-                        Column {
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = userState.user?.name ?: "",
                                 style = MaterialTheme.typography.titleMedium
                             )
-                            Text(
-                                text = currentScreen.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
-                    }
-                },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menú")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Compartir Respaldo") },
-                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    onBackup()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Guardar en Carpeta") },
-                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    scope.launch {
-                                        val file = userViewModel.createBackupFile()
-                                        if (file != null) {
-                                            tempBackupFile = file
-                                            createDocumentLauncher.launch("myperfectoutfit_backup_${System.currentTimeMillis()}.zip")
-                                        } else {
-                                            Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+
+                        // Menú Derecha
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Menú")
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Compartir Respaldo") },
+                                    leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                    onClick = {
+                                        showMenu = false
+                                        onBackup()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Guardar en Carpeta") },
+                                    leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                    onClick = {
+                                        showMenu = false
+                                        scope.launch {
+                                            val file = userViewModel.createBackupFile()
+                                            if (file != null) {
+                                                tempBackupFile = file
+                                                createDocumentLauncher.launch("myperfectoutfit_backup_${System.currentTimeMillis()}.zip")
+                                            } else {
+                                                Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Restaurar desde Archivo") },
-                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    restoreLauncher.launch("application/zip")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Google Drive") },
-                                leadingIcon = { Icon(Icons.Default.Cloud, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    Toast.makeText(context, "Configura Drive en Google Cloud.", Toast.LENGTH_SHORT).show()
-                                }
-                            )
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Restaurar desde Archivo") },
+                                    leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                                    onClick = {
+                                        showMenu = false
+                                        restoreLauncher.launch("application/zip")
+                                    }
+                                )
+                            }
                         }
                     }
                 }
-            )
+            }
         },
         bottomBar = {
             NavigationBar {
@@ -294,7 +324,7 @@ fun MainScreen(
                 WardrobeScreen()
             }
             composable(Screen.AiAdvisor.route) {
-                OutfitGeneratorScreen()
+                AiAdvisorScreen()
             }
             composable(Screen.Laundry.route) {
                 LaundryScreen()
@@ -317,8 +347,7 @@ fun EditProfileDialog(
     onToggleRule: (Long, Boolean) -> Unit,
     onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit,
     onBackup: () -> Unit,
-    onRestore: () -> Unit,
-    onDriveBackup: () -> Unit
+    onRestore: () -> Unit
 ) {
     var name by remember { mutableStateOf(user.name) }
     var email by remember { mutableStateOf(user.email) }

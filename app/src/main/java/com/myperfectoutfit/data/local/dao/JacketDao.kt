@@ -16,7 +16,7 @@ interface JacketDao {
     suspend fun insertJacket(jacket: JacketEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertJackets(jackets: List<JacketEntity>)
+    suspend fun insertJackets(jackets: List<JacketEntity>): List<Long>
 
     @Query("SELECT * FROM jackets WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")
     fun getCleanJackets(userId: Long): Flow<List<JacketEntity>>

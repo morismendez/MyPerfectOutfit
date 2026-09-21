@@ -103,6 +103,26 @@ fun OutfitGeneratorScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        if (uiState.isTripModeActive) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.FlightTakeoff, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Modo Viaje Activo: Sugerencias basadas en tu maleta para '${uiState.activeTripName}'",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+
         // Entrada de preferencia puntual del usuario
         OutlinedTextField(
             value = uiState.userInstruction,

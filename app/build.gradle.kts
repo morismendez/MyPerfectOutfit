@@ -78,6 +78,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.palette)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.compose.ui.google.fonts)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -102,6 +104,7 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
+    implementation(libs.gson)
 
 // Seguridad (EncryptedSharedPreferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
@@ -117,4 +120,9 @@ dependencies {
     implementation("com.google.api-client:google-api-client-android:2.2.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20240521-2.0.0")
     implementation("com.google.http-client:google-http-client-gson:1.44.1")
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 }

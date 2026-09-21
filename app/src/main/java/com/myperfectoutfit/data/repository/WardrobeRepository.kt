@@ -77,16 +77,16 @@ interface WardrobeRepository {
     suspend fun updateBagAvailability(bagId: Long, isAvailable: Boolean)
 
     // --- Inserciones e Inventariado ---
-    suspend fun insertShirts(shirts: List<ShirtEntity>)
-    suspend fun insertPants(pants: List<PantEntity>)
-    suspend fun insertTies(ties: List<TieEntity>)
-    suspend fun insertShoes(shoes: List<ShoeEntity>)
-    suspend fun insertWatches(watches: List<WatchEntity>)
-    suspend fun insertFragrances(fragrances: List<FragranceEntity>)
-    suspend fun insertJackets(jackets: List<JacketEntity>)
-    suspend fun insertBags(bags: List<BagEntity>)
-    suspend fun insertDresses(dresses: List<DressEntity>)
-    suspend fun insertSkirts(skirts: List<SkirtEntity>)
+    suspend fun insertShirts(shirts: List<ShirtEntity>): List<Long>
+    suspend fun insertPants(pants: List<PantEntity>): List<Long>
+    suspend fun insertTies(ties: List<TieEntity>): List<Long>
+    suspend fun insertShoes(shoes: List<ShoeEntity>): List<Long>
+    suspend fun insertWatches(watches: List<WatchEntity>): List<Long>
+    suspend fun insertFragrances(fragrances: List<FragranceEntity>): List<Long>
+    suspend fun insertJackets(jackets: List<JacketEntity>): List<Long>
+    suspend fun insertBags(bags: List<BagEntity>): List<Long>
+    suspend fun insertDresses(dresses: List<DressEntity>): List<Long>
+    suspend fun insertSkirts(skirts: List<SkirtEntity>): List<Long>
 
     // --- Actualizaciones (Updates) ---
     suspend fun updateShirt(shirt: ShirtEntity)
@@ -103,6 +103,11 @@ interface WardrobeRepository {
     // --- Historial de Outfits ---
     fun getFullHistory(userId: Long): Flow<List<HistoryWithDetails>>
     fun getHistoryByDate(userId: Long, date: String): Flow<List<HistoryWithDetails>>
+
+    // --- Chat de Estilo ---
+    fun getChatHistory(userId: Long): Flow<List<ChatMessageEntity>>
+    suspend fun saveChatMessage(message: ChatMessageEntity)
+    suspend fun clearChatHistory(userId: Long)
 
     //DELETES
     suspend fun deleteShirt(shirt: ShirtEntity)

@@ -31,6 +31,9 @@ class BackupManager @Inject constructor(
                 val walFile = File(dbFile.absolutePath + "-wal")
                 
                 // Asegurarse de que los cambios en memoria se escriban al disco antes de copiar
+                // Realizamos un checkpoint manual para vaciar el archivo -wal al .db
+                val db = AppDatabase.getInstance(context)
+                db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
                 AppDatabase.closeInstance() 
 
                 addToZip(zos, dbFile, "database/$dbName")

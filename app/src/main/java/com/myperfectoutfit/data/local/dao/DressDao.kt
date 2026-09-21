@@ -16,7 +16,7 @@ interface DressDao {
     suspend fun insertDress(dress: DressEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDresses(dresses: List<DressEntity>)
+    suspend fun insertDresses(dresses: List<DressEntity>): List<Long>
 
     @Query("SELECT * FROM dresses WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")
     fun getCleanDresses(userId: Long): Flow<List<DressEntity>>

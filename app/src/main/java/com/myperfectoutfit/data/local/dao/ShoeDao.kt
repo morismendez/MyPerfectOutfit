@@ -15,7 +15,7 @@ interface ShoeDao {
     suspend fun insertShoe(shoe: ShoeEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertShoes(shoes: List<ShoeEntity>)
+    suspend fun insertShoes(shoes: List<ShoeEntity>): List<Long>
 
     // Obtiene únicamente calzado disponible para uso (no en reparación o mantenimiento)
     @Query("SELECT * FROM shoes WHERE user_id = :userId AND isAvailable = 1 ORDER BY code ASC")

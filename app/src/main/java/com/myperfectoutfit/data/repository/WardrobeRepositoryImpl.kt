@@ -33,6 +33,7 @@ class WardrobeRepositoryImpl(
     private val skirtDao = db.skirtDao()
     private val customDao = db.customDao()
     private val ruleDao = db.ruleDao()
+    private val chatDao = db.chatMessageDao()
 
     // --- Usuario ---
     override fun getPrimaryUser(): Flow<UserEntity?> = userDao.getPrimaryUser()
@@ -156,43 +157,43 @@ class WardrobeRepositoryImpl(
     }
 
     // --- Inserciones Masivas ---
-    override suspend fun insertShirts(shirts: List<ShirtEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertShirts(shirts: List<ShirtEntity>): List<Long> = withContext(Dispatchers.IO) {
         shirtDao.insertShirts(shirts)
     }
 
-    override suspend fun insertPants(pants: List<PantEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertPants(pants: List<PantEntity>): List<Long> = withContext(Dispatchers.IO) {
         pantDao.insertPants(pants)
     }
 
-    override suspend fun insertTies(ties: List<TieEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertTies(ties: List<TieEntity>): List<Long> = withContext(Dispatchers.IO) {
         tieDao.insertTies(ties)
     }
 
-    override suspend fun insertShoes(shoes: List<ShoeEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertShoes(shoes: List<ShoeEntity>): List<Long> = withContext(Dispatchers.IO) {
         shoeDao.insertShoes(shoes)
     }
 
-    override suspend fun insertWatches(watches: List<WatchEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertWatches(watches: List<WatchEntity>): List<Long> = withContext(Dispatchers.IO) {
         watchDao.insertWatches(watches)
     }
 
-    override suspend fun insertFragrances(fragrances: List<FragranceEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertFragrances(fragrances: List<FragranceEntity>): List<Long> = withContext(Dispatchers.IO) {
         fragranceDao.insertFragrances(fragrances)
     }
 
-    override suspend fun insertJackets(jackets: List<JacketEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertJackets(jackets: List<JacketEntity>): List<Long> = withContext(Dispatchers.IO) {
         jacketDao.insertJackets(jackets)
     }
 
-    override suspend fun insertBags(bags: List<BagEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertBags(bags: List<BagEntity>): List<Long> = withContext(Dispatchers.IO) {
         bagDao.insertBags(bags)
     }
 
-    override suspend fun insertDresses(dresses: List<DressEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertDresses(dresses: List<DressEntity>): List<Long> = withContext(Dispatchers.IO) {
         dressDao.insertDresses(dresses)
     }
 
-    override suspend fun insertSkirts(skirts: List<SkirtEntity>) = withContext(Dispatchers.IO) {
+    override suspend fun insertSkirts(skirts: List<SkirtEntity>): List<Long> = withContext(Dispatchers.IO) {
         skirtDao.insertSkirts(skirts)
     }
 
@@ -241,6 +242,17 @@ class WardrobeRepositoryImpl(
     override fun getFullHistory(userId: Long): Flow<List<HistoryWithDetails>> = historyDao.getFullHistory(userId)
 
     override fun getHistoryByDate(userId: Long, date: String): Flow<List<HistoryWithDetails>> = historyDao.getHistoryByDate(userId, date)
+
+    override fun getChatHistory(userId: Long): Flow<List<ChatMessageEntity>> = chatDao.getChatHistory(userId)
+
+    override suspend fun saveChatMessage(message: ChatMessageEntity) = withContext(Dispatchers.IO) {
+        chatDao.insertMessage(message)
+        chatDao.limitHistory(message.userId)
+    }
+
+    override suspend fun clearChatHistory(userId: Long) = withContext(Dispatchers.IO) {
+        chatDao.clearHistory(userId)
+    }
 
     override suspend fun deleteShirt(shirt: ShirtEntity) = withContext(Dispatchers.IO) {
         shirtDao.deleteShirt(shirt)

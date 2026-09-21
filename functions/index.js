@@ -3,7 +3,11 @@ const axios = require("axios");
 
 const SECRETS = ["AZURE_AI_KEY", "AZURE_AI_ENDPOINT", "AZURE_AI_DEPLOYMENT"];
 
-exports.getOutfitRecommendation = functions.runWith({ secrets: SECRETS }).https.onCall(async (data, context) => {
+exports.getOutfitRecommendation = functions.runWith({
+    secrets: SECRETS,
+    timeoutSeconds: 60,
+    memory: '512MB'
+}).https.onCall(async (data, context) => {
     const apiKey = process.env.AZURE_AI_KEY;
     const deployment = process.env.AZURE_AI_DEPLOYMENT;
     let endpoint = process.env.AZURE_AI_ENDPOINT.trim();
@@ -17,8 +21,7 @@ exports.getOutfitRecommendation = functions.runWith({ secrets: SECRETS }).https.
             messages: [
                 { role: "user", content: `${data.systemInstruction}\n\n${data.userPrompt}` }
             ],
-            max_completion_tokens: 2500,
-            reasoning_effort: "medium"
+            max_completion_tokens: 2500
         }, {
             headers: { "api-key": apiKey, "Content-Type": "application/json" }
         });
@@ -30,7 +33,11 @@ exports.getOutfitRecommendation = functions.runWith({ secrets: SECRETS }).https.
     }
 });
 
-exports.analyzeGarment = functions.runWith({ secrets: SECRETS }).https.onCall(async (data, context) => {
+exports.analyzeGarment = functions.runWith({
+    secrets: SECRETS,
+    timeoutSeconds: 60,
+    memory: '512MB'
+}).https.onCall(async (data, context) => {
     const apiKey = process.env.AZURE_AI_KEY;
     const deployment = process.env.AZURE_AI_DEPLOYMENT;
     let endpoint = process.env.AZURE_AI_ENDPOINT.trim();
@@ -50,8 +57,7 @@ exports.analyzeGarment = functions.runWith({ secrets: SECRETS }).https.onCall(as
                     ]
                 }
             ],
-            max_completion_tokens: 1500,
-            reasoning_effort: "medium"
+            max_completion_tokens: 1500
         }, {
             headers: { "api-key": apiKey, "Content-Type": "application/json" }
         });

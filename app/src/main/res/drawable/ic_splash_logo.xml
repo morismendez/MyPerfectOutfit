@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Reducimos a 80dp. Matemáticamente, este tamaño garantiza que un diseño cuadrado o hexagonal
+         quede totalmente dentro del círculo de recorte de Android (108dp) sin tocar los bordes. -->
+    <item
+        android:drawable="@drawable/app_logo_raw"
+        android:gravity="center"
+        android:width="80dp"
+        android:height="80dp" />
+</layer-list>

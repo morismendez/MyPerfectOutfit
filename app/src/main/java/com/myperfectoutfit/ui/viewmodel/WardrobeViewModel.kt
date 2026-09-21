@@ -7,6 +7,7 @@ import com.myperfectoutfit.data.repository.WardrobeRepository
 import com.myperfectoutfit.ui.state.CategoryFilter
 import com.myperfectoutfit.ui.state.WardrobeUiState
 import com.myperfectoutfit.data.remote.AzureOutfitService
+import com.myperfectoutfit.data.repository.SuitcaseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -17,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class WardrobeViewModel @Inject constructor(
     private val repository: WardrobeRepository,
+    private val suitcaseRepository: SuitcaseRepository,
     private val azureService: AzureOutfitService
 ) : ViewModel() {
 
@@ -101,61 +103,89 @@ class WardrobeViewModel @Inject constructor(
 
     fun insertShirt(shirt: ShirtEntity) {
         viewModelScope.launch {
-            repository.insertShirts(listOf(shirt))
+            val id = repository.insertShirts(listOf(shirt)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("SHIRT_$id", shirt.userId)
         }
     }
 
     fun insertPant(pant: PantEntity) {
         viewModelScope.launch {
-            repository.insertPants(listOf(pant))
+            val id = repository.insertPants(listOf(pant)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("PANT_$id", pant.userId)
         }
     }
 
     fun insertShoe(shoe: ShoeEntity) {
         viewModelScope.launch {
-            repository.insertShoes(listOf(shoe))
+            val id = repository.insertShoes(listOf(shoe)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("SHOE_$id", shoe.userId)
         }
     }
 
     fun insertTie(tie: TieEntity) {
         viewModelScope.launch {
-            repository.insertTies(listOf(tie))
+            val id = repository.insertTies(listOf(tie)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("TIE_$id", tie.userId)
         }
     }
 
     fun insertWatch(watch: WatchEntity) {
         viewModelScope.launch {
-            repository.insertWatches(listOf(watch))
+            val id = repository.insertWatches(listOf(watch)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("WATCH_$id", watch.userId)
         }
     }
 
     fun insertFragrance(fragrance: FragranceEntity) {
         viewModelScope.launch {
-            repository.insertFragrances(listOf(fragrance))
+            val ids = repository.insertFragrances(listOf(fragrance))
+            val id = ids.firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("FRAGRANCE_$id", fragrance.userId)
         }
     }
 
     fun insertJacket(jacket: JacketEntity) {
         viewModelScope.launch {
-            repository.insertJackets(listOf(jacket))
+            val id = repository.insertJackets(listOf(jacket)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("JACKET_$id", jacket.userId)
         }
     }
 
     fun insertBag(bag: BagEntity) {
         viewModelScope.launch {
-            repository.insertBags(listOf(bag))
+            val id = repository.insertBags(listOf(bag)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("BAG_$id", bag.userId)
         }
     }
 
     fun insertDress(dress: DressEntity) {
         viewModelScope.launch {
-            repository.insertDresses(listOf(dress))
+            val id = repository.insertDresses(listOf(dress)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("DRESS_$id", dress.userId)
         }
     }
 
     fun insertSkirt(skirt: SkirtEntity) {
         viewModelScope.launch {
-            repository.insertSkirts(listOf(skirt))
+            val id = repository.insertSkirts(listOf(skirt)).firstOrNull() ?: return@launch
+            checkAndAddToActiveSuitcase("SKIRT_$id", skirt.userId)
+        }
+    }
+
+    private fun checkAndAddToActiveSuitcase(garmentId: String, userId: Long) {
+        viewModelScope.launch {
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }.format(java.util.Date())
+            
+            val activeSuitcase = suitcaseRepository.getActiveSuitcase(userId, today).firstOrNull()
+            if (activeSuitcase != null) {
+                val currentIds = activeSuitcase.garmentIds.split(",").toMutableList()
+                if (!currentIds.any { it.startsWith(garmentId) }) {
+                    currentIds.add("$garmentId:true") // Add as packed by default
+                    suitcaseRepository.saveSuitcase(activeSuitcase.copy(garmentIds = currentIds.joinToString(",")))
+                }
+            }
         }
     }
 
@@ -194,7 +224,8 @@ class WardrobeViewModel @Inject constructor(
 
     fun insertCustomGarment(garment: CustomGarmentEntity) {
         viewModelScope.launch {
-            repository.insertCustomGarment(garment)
+            val id = repository.insertCustomGarment(garment)
+            checkAndAddToActiveSuitcase("CUSTOM_$id", garment.userId)
         }
     }
 

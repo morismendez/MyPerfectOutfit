@@ -1,160 +1,91 @@
 package com.myperfectoutfit.ui.screens
 
-import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
-import org.json.JSONObject
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.myperfectoutfit.ui.viewmodel.RecommendedOutfit
-import kotlinx.coroutines.launch
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.local.enums.LaundryState
+import com.myperfectoutfit.ui.components.ImageFramingDialog
 import com.myperfectoutfit.ui.state.CategoryFilter
+import com.myperfectoutfit.ui.state.WardrobeUiState
 import com.myperfectoutfit.ui.viewmodel.WardrobeViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import androidx.compose.ui.window.Dialog
-import androidx.compose.foundation.background
-import androidx.palette.graphics.Palette
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WardrobeScreen(
     viewModel: WardrobeViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var categoryToEdit by remember { mutableStateOf<CustomCategoryEntity?>(null) }
+    var itemToEdit by remember { mutableStateOf<Map<String, Any?>?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf<Any?>(null) }
     var categoryToDelete by remember { mutableStateOf<CustomCategoryEntity?>(null) }
-    var itemToDelete by remember { mutableStateOf<Any?>(null) }
-    var itemToEdit by remember { mutableStateOf<Any?>(null) }
-    var zoomImageUri by remember { mutableStateOf<String?>(null) }
+    var showCustomCategoryDialog by remember { mutableStateOf(false) }
+    var fullImageToView by remember { mutableStateOf<String?>(null) }
 
-    if (showAddCategoryDialog || categoryToEdit != null) {
-        AddCategoryDialog(
-            initialCategory = categoryToEdit,
-            onDismiss = { 
-                showAddCategoryDialog = false 
-                categoryToEdit = null
-            },
-            onSave = { name, attrs, needsLaundry ->
-                if (categoryToEdit != null) {
-                    viewModel.updateCustomCategory(categoryToEdit!!.copy(
-                        name = name, 
-                        attributeNames = attrs,
-                        needsLaundry = needsLaundry
-                    ))
-                } else {
-                    viewModel.insertCustomCategory(name, attrs, needsLaundry)
+    Scaffold(
+        floatingActionButton = {
+            if (uiState.selectedCategory != CategoryFilter.ALL || uiState.selectedCustomCategoryId != null) {
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Añadir Prenda")
                 }
-                showAddCategoryDialog = false
-                categoryToEdit = null
             }
-        )
-    }
-
-    if (categoryToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { categoryToDelete = null },
-            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("¿Eliminar Categoría?") },
-            text = { Text("Esta acción eliminará la categoría '${categoryToDelete?.name}' y TODAS las prendas contenidas en ella de forma permanente.") },
-            confirmButton = {
-                Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    onClick = {
-                        categoryToDelete?.let { viewModel.deleteCustomCategory(it) }
-                        categoryToDelete = null
-                    }
-                ) {
-                    Text("Eliminar Todo")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { categoryToDelete = null }) { Text("Cancelar") }
-            }
-        )
-    }
-
-    AnimatedVisibility(visible = false) {
-        // Marcador para futura limpieza de imagen
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
+        }
+    ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
         ) {
-            val activeCategories = uiState.user?.activeCategories?.split(",")?.mapNotNull { name ->
-                try { CategoryFilter.valueOf(name) } catch(_: Exception) { null }
-            } ?: CategoryFilter.entries.filter { it != CategoryFilter.ALL && it != CategoryFilter.LAUNDRY }
-
-            CategoryFilterBar(
-                selectedCategory = uiState.selectedCategory,
-                selectedCustomCategoryId = uiState.selectedCustomCategoryId,
-                activeCategories = activeCategories,
-                customCategories = uiState.customCategories,
-                counts = mapOf(
-                    CategoryFilter.SHIRTS to uiState.shirts.size,
-                    CategoryFilter.PANTS to uiState.pants.size,
-                    CategoryFilter.SHOES to uiState.shoes.size,
-                    CategoryFilter.TIES to uiState.ties.size,
-                    CategoryFilter.WATCHES to uiState.watches.size,
-                    CategoryFilter.FRAGRANCES to uiState.fragrances.size,
-                    CategoryFilter.JACKETS to uiState.jackets.size,
-                    CategoryFilter.BAGS to uiState.bags.size,
-                    CategoryFilter.DRESSES to uiState.dresses.size,
-                    CategoryFilter.SKIRTS to uiState.skirts.size
-                ),
-                customCounts = uiState.customGarments.groupBy { it.categoryId }.mapValues { it.value.size },
-                displayMode = uiState.user?.categoryDisplayMode ?: com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH,
-                onCategorySelected = { viewModel.selectCategory(it) },
-                onCustomCategorySelected = { viewModel.selectCustomCategory(it) },
-                onAddCategoryRequested = { showAddCategoryDialog = true },
-                onEditCustomCategory = { categoryToEdit = it },
-                onDeleteCustomCategory = { categoryToDelete = it }
+            CategoryFilters(
+                uiState = uiState,
+                onSelect = { viewModel.selectCategory(it) },
+                onSelectCustom = { viewModel.selectCustomCategory(it) },
+                onAddCustom = { showCustomCategoryDialog = true },
+                onDeleteCustom = { categoryToDelete = it }
             )
 
             if (uiState.isLoading) {
@@ -162,1222 +93,448 @@ fun WardrobeScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                when (uiState.selectedCategory) {
-                    CategoryFilter.SHIRTS -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.shirts) { shirt ->
-                                PrendaItemCard(
-                                    title = shirt.brand,
-                                    subtitle = shirt.pattern,
-                                    imageUri = shirt.imageUrl,
-                                    laundryState = shirt.laundryState,
-                                    onDeleteRequested = { itemToDelete = shirt },
-                                    onEditRequested = { itemToEdit = shirt },
-                                    onImageClick = { zoomImageUri = shirt.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.PANTS -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.pants) { pant ->
-                                PrendaItemCard(
-                                    title = pant.brand ?: "Sin Marca",
-                                    subtitle = "${pant.subType} - ${pant.material}",
-                                    imageUri = pant.imageUrl,
-                                    laundryState = pant.laundryState,
-                                    onDeleteRequested = { itemToDelete = pant },
-                                    onEditRequested = { itemToEdit = pant },
-                                    onImageClick = { zoomImageUri = pant.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.SHOES -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.shoes) { shoe ->
-                                PrendaItemCard(
-                                    title = shoe.brand,
-                                    subtitle = "${shoe.style} - ${shoe.color}",
-                                    imageUri = shoe.imageUrl,
-                                    laundryState = if (shoe.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                    onDeleteRequested = { itemToDelete = shoe },
-                                    onEditRequested = { itemToEdit = shoe },
-                                    onImageClick = { zoomImageUri = shoe.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.TIES -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.ties) { tie ->
-                                PrendaItemCard(
-                                    title = tie.colorRange,
-                                    subtitle = tie.pattern,
-                                    imageUri = tie.imageUrl,
-                                    laundryState = tie.laundryState,
-                                    onDeleteRequested = { itemToDelete = tie },
-                                    onEditRequested = { itemToEdit = tie },
-                                    onImageClick = { zoomImageUri = tie.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.WATCHES -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.watches) { watch ->
-                                PrendaItemCard(
-                                    title = watch.brand,
-                                    subtitle = watch.model,
-                                    imageUri = watch.imageUrl,
-                                    laundryState = if (watch.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                    onDeleteRequested = { itemToDelete = watch },
-                                    onEditRequested = { itemToEdit = watch },
-                                    onImageClick = { zoomImageUri = watch.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.FRAGRANCES -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.fragrances) { fragrance ->
-                                PrendaItemCard(
-                                    title = fragrance.brand,
-                                    subtitle = fragrance.name,
-                                    imageUri = fragrance.imageUrl,
-                                    laundryState = LaundryState.CLEAN,
-                                    onDeleteRequested = { itemToDelete = fragrance },
-                                    onEditRequested = { itemToEdit = fragrance },
-                                    onImageClick = { zoomImageUri = fragrance.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.JACKETS -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.jackets) { jacket ->
-                                PrendaItemCard(
-                                    title = jacket.brand ?: "Sin Marca",
-                                    subtitle = jacket.color,
-                                    imageUri = jacket.imageUrl,
-                                    laundryState = jacket.laundryState,
-                                    onDeleteRequested = { itemToDelete = jacket },
-                                    onEditRequested = { itemToEdit = jacket },
-                                    onImageClick = { zoomImageUri = jacket.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.BAGS -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.bags) { bag ->
-                                PrendaItemCard(
-                                    title = bag.brand ?: "Sin Marca",
-                                    subtitle = "${bag.style} - ${bag.color}",
-                                    imageUri = bag.imageUrl,
-                                    laundryState = if (bag.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                    onDeleteRequested = { itemToDelete = bag },
-                                    onEditRequested = { itemToEdit = bag },
-                                    onImageClick = { zoomImageUri = bag.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.DRESSES -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.dresses) { dress ->
-                                PrendaItemCard(
-                                    title = dress.brand ?: "Sin Marca",
-                                    subtitle = "${dress.color} - ${dress.pattern}",
-                                    imageUri = dress.imageUrl,
-                                    laundryState = dress.laundryState,
-                                    onDeleteRequested = { itemToDelete = dress },
-                                    onEditRequested = { itemToEdit = dress },
-                                    onImageClick = { zoomImageUri = dress.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    CategoryFilter.SKIRTS -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(uiState.skirts) { skirt ->
-                                PrendaItemCard(
-                                    title = skirt.brand ?: "Sin Marca",
-                                    subtitle = "${skirt.style} - ${skirt.color}",
-                                    imageUri = skirt.imageUrl,
-                                    laundryState = skirt.laundryState,
-                                    onDeleteRequested = { itemToDelete = skirt },
-                                    onEditRequested = { itemToEdit = skirt },
-                                    onImageClick = { zoomImageUri = skirt.imageUrl }
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        if (uiState.selectedCustomCategoryId != null) {
-                            val customGarments = uiState.customGarments.filter { it.categoryId == uiState.selectedCustomCategoryId }
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(8.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(customGarments) { garment ->
-                                    PrendaItemCard(
-                                        title = garment.attributeValues.split("|").firstOrNull()?.split(":")?.getOrNull(1) ?: "Prenda",
-                                        subtitle = garment.attributeValues.replace("|", " - "),
-                                        imageUri = garment.imageUrl,
-                                        laundryState = garment.laundryState,
-                                        onDeleteRequested = { itemToDelete = garment },
-                                        onEditRequested = { itemToEdit = garment },
-                                        onImageClick = { zoomImageUri = garment.imageUrl }
-                                    )
-                                }
-                            }
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(8.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                if (activeCategories.contains(CategoryFilter.SHIRTS)) {
-                                    items(uiState.shirts) { shirt ->
-                                        PrendaItemCard(
-                                            title = shirt.brand,
-                                            subtitle = shirt.pattern,
-                                            imageUri = shirt.imageUrl,
-                                            laundryState = shirt.laundryState,
-                                            onDeleteRequested = { itemToDelete = shirt },
-                                            onEditRequested = { itemToEdit = shirt },
-                                            onImageClick = { zoomImageUri = shirt.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.PANTS)) {
-                                    items(uiState.pants) { pant ->
-                                        PrendaItemCard(
-                                            title = pant.brand ?: "Sin Marca",
-                                            subtitle = "${pant.subType} - ${pant.material}",
-                                            imageUri = pant.imageUrl,
-                                            laundryState = pant.laundryState,
-                                            onDeleteRequested = { itemToDelete = pant },
-                                            onEditRequested = { itemToEdit = pant },
-                                            onImageClick = { zoomImageUri = pant.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.SHOES)) {
-                                    items(uiState.shoes) { shoe ->
-                                        PrendaItemCard(
-                                            title = shoe.brand,
-                                            subtitle = "${shoe.style} - ${shoe.color}",
-                                            imageUri = shoe.imageUrl,
-                                            laundryState = if (shoe.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                            onDeleteRequested = { itemToDelete = shoe },
-                                            onEditRequested = { itemToEdit = shoe },
-                                            onImageClick = { zoomImageUri = shoe.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.TIES)) {
-                                    items(uiState.ties) { tie ->
-                                        PrendaItemCard(
-                                            title = tie.colorRange,
-                                            subtitle = tie.pattern,
-                                            imageUri = tie.imageUrl,
-                                            laundryState = tie.laundryState,
-                                            onDeleteRequested = { itemToDelete = tie },
-                                            onEditRequested = { itemToEdit = tie },
-                                            onImageClick = { zoomImageUri = tie.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.WATCHES)) {
-                                    items(uiState.watches) { watch ->
-                                        PrendaItemCard(
-                                            title = watch.brand,
-                                            subtitle = watch.model,
-                                            imageUri = watch.imageUrl,
-                                            laundryState = if (watch.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                            onDeleteRequested = { itemToDelete = watch },
-                                            onEditRequested = { itemToEdit = watch },
-                                            onImageClick = { zoomImageUri = watch.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.FRAGRANCES)) {
-                                    items(uiState.fragrances) { fragrance ->
-                                        PrendaItemCard(
-                                            title = fragrance.brand,
-                                            subtitle = fragrance.name,
-                                            imageUri = fragrance.imageUrl,
-                                            laundryState = LaundryState.CLEAN,
-                                            onDeleteRequested = { itemToDelete = fragrance },
-                                            onEditRequested = { itemToEdit = fragrance },
-                                            onImageClick = { zoomImageUri = fragrance.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.JACKETS)) {
-                                    items(uiState.jackets) { jacket ->
-                                        PrendaItemCard(
-                                            title = jacket.brand ?: "Sin Marca",
-                                            subtitle = jacket.color,
-                                            imageUri = jacket.imageUrl,
-                                            laundryState = jacket.laundryState,
-                                            onDeleteRequested = { itemToDelete = jacket },
-                                            onEditRequested = { itemToEdit = jacket },
-                                            onImageClick = { zoomImageUri = jacket.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.BAGS)) {
-                                    items(uiState.bags) { bag ->
-                                        PrendaItemCard(
-                                            title = bag.brand ?: "Sin Marca",
-                                            subtitle = "${bag.style} - ${bag.color}",
-                                            imageUri = bag.imageUrl,
-                                            laundryState = if (bag.isAvailable) LaundryState.CLEAN else LaundryState.IN_LAUNDRY,
-                                            onDeleteRequested = { itemToDelete = bag },
-                                            onEditRequested = { itemToEdit = bag },
-                                            onImageClick = { zoomImageUri = bag.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.DRESSES)) {
-                                    items(uiState.dresses) { dress ->
-                                        PrendaItemCard(
-                                            title = dress.brand ?: "Sin Marca",
-                                            subtitle = "${dress.color} - ${dress.pattern}",
-                                            imageUri = dress.imageUrl,
-                                            laundryState = dress.laundryState,
-                                            onDeleteRequested = { itemToDelete = dress },
-                                            onEditRequested = { itemToEdit = dress },
-                                            onImageClick = { zoomImageUri = dress.imageUrl }
-                                        )
-                                    }
-                                }
-                                if (activeCategories.contains(CategoryFilter.SKIRTS)) {
-                                    items(uiState.skirts) { skirt ->
-                                        PrendaItemCard(
-                                            title = skirt.brand ?: "Sin Marca",
-                                            subtitle = "${skirt.style} - ${skirt.color}",
-                                            imageUri = skirt.imageUrl,
-                                            laundryState = skirt.laundryState,
-                                            onDeleteRequested = { itemToDelete = skirt },
-                                            onEditRequested = { itemToEdit = skirt },
-                                            onImageClick = { zoomImageUri = skirt.imageUrl }
-                                        )
-                                    }
-                                }
-                                
-                                // Mostrar también prendas de categorías personalizadas en ALL
-                                items(uiState.customGarments) { garment ->
-                                    PrendaItemCard(
-                                        title = garment.attributeValues.split("|").firstOrNull()?.split(":")?.getOrNull(1) ?: "Prenda",
-                                        subtitle = garment.attributeValues.replace("|", " - "),
-                                        imageUri = garment.imageUrl,
-                                        laundryState = garment.laundryState,
-                                        onDeleteRequested = { itemToDelete = garment },
-                                        onEditRequested = { itemToEdit = garment },
-                                        onImageClick = { zoomImageUri = garment.imageUrl }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (uiState.selectedCategory != CategoryFilter.ALL || uiState.selectedCustomCategoryId != null) {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Prenda")
-            }
-        }
-    }
-
-    if (zoomImageUri != null) {
-        Dialog(onDismissRequest = { zoomImageUri = null }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = zoomImageUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                    IconButton(
-                        onClick = { zoomImageUri = null },
-                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
-                    }
-                }
-            }
-        }
-    }
-
-    itemToDelete?.let { item ->
-        AlertDialog(
-            onDismissRequest = { itemToDelete = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                WardrobeGrid(
+                    uiState = uiState,
+                    onPreview = { fullImageToView = it },
+                    onEdit = { itemToEdit = it },
+                    onDelete = { showDeleteConfirm = it }
                 )
+            }
+        }
+    }
+
+    if (fullImageToView != null) {
+        FullImagePreview(
+            imageUrl = fullImageToView!!,
+            onDismiss = { fullImageToView = null }
+        )
+    }
+
+    if (showAddDialog || itemToEdit != null) {
+        PrendaDialog(
+            category = itemToEdit?.get("selectedCategory") as? CategoryFilter ?: uiState.selectedCategory,
+            initialCustomCategoryId = itemToEdit?.get("customCategoryId") as? Long ?: uiState.selectedCustomCategoryId,
+            customCategories = uiState.customCategories,
+            initialData = itemToEdit,
+            onDismiss = { 
+                showAddDialog = false
+                itemToEdit = null
             },
-            title = { Text("¿Eliminar Prenda?") },
-            text = { Text("Esta acción eliminará la prenda permanentemente de tu armario.") },
+            onSave = { data ->
+                if (itemToEdit == null) {
+                    saveNewItem(data, viewModel)
+                } else {
+                    updateExistingItem(data, itemToEdit!!, viewModel)
+                }
+                showAddDialog = false
+                itemToEdit = null
+            }
+        )
+    }
+
+    if (showCustomCategoryDialog) {
+        CustomCategoryDialog(
+            onDismiss = { showCustomCategoryDialog = false },
+            onSave = { name, attrs, needsLaundry ->
+                viewModel.insertCustomCategory(name, attrs, needsLaundry)
+                showCustomCategoryDialog = false
+            }
+        )
+    }
+
+    if (categoryToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { categoryToDelete = null },
+            title = { Text("Eliminar Categoría") },
+            text = { Text("¿Estás seguro de que quieres eliminar la categoría '${categoryToDelete?.name}'? Se borrarán también todas las prendas que contenga.") },
             confirmButton = {
-                Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                TextButton(
                     onClick = {
-                        when (item) {
-                            is ShirtEntity -> viewModel.deleteShirt(item)
-                            is PantEntity -> viewModel.deletePant(item)
-                            is ShoeEntity -> viewModel.deleteShoe(item)
-                            is TieEntity -> viewModel.deleteTie(item)
-                            is WatchEntity -> viewModel.deleteWatch(item)
-                            is FragranceEntity -> viewModel.deleteFragrance(item)
-                            is JacketEntity -> viewModel.deleteJacket(item)
-                            is BagEntity -> viewModel.deleteBag(item)
-                            is DressEntity -> viewModel.deleteDress(item)
-                            is SkirtEntity -> viewModel.deleteSkirt(item)
-                            is CustomGarmentEntity -> viewModel.deleteCustomGarment(item)
-                        }
-                        itemToDelete = null
-                    }
+                        viewModel.deleteCustomCategory(categoryToDelete!!)
+                        categoryToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Eliminar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
+                TextButton(onClick = { categoryToDelete = null }) {
                     Text("Cancelar")
                 }
             }
         )
     }
 
-    if (showAddDialog || itemToEdit != null) {
-        val initialData = itemToEdit?.let { item ->
-            mutableMapOf<String, Any?>().apply {
-                put("imageUrl", when(item) {
-                    is ShirtEntity -> item.imageUrl
-                    is PantEntity -> item.imageUrl
-                    is ShoeEntity -> item.imageUrl
-                    is TieEntity -> item.imageUrl
-                    is WatchEntity -> item.imageUrl
-                    is FragranceEntity -> item.imageUrl
-                    is JacketEntity -> item.imageUrl
-                    is BagEntity -> item.imageUrl
-                    is DressEntity -> item.imageUrl
-                    is SkirtEntity -> item.imageUrl
-                    is CustomGarmentEntity -> item.imageUrl
-                    else -> ""
-                })
-                when(item) {
-                    is ShirtEntity -> {
-                        put("brand", item.brand)
-                        put("subType", item.subType)
-                        put("color", item.primaryColor)
-                        put("secondaryColor", item.secondaryColor ?: "")
-                        put("pattern", item.pattern)
-                        put("sleeveLength", item.sleeveLength)
-                        put("necklineStyle", item.necklineStyle)
-                        put("material", item.material)
-                        put("formalityLevel", item.formalityLevel)
-                        put("fit", item.fit)
-                    }
-                    is PantEntity -> {
-                        put("brand", item.brand ?: "")
-                        put("subType", item.subType)
-                        put("color", item.primaryColor)
-                        put("secondaryColor", item.secondaryColor ?: "")
-                        put("material", item.material)
-                        put("lengthStyle", item.lengthStyle)
-                        put("waistRise", item.waistRise)
-                        put("fitStyle", item.fitStyle)
-                        put("formalityLevel", item.formalityLevel)
-                    }
-                    is ShoeEntity -> {
-                        put("brand", item.brand)
-                        put("subType", item.subType)
-                        put("style", item.style)
-                        put("color", item.color)
-                        put("secondaryColor", item.secondaryColor ?: "")
-                        put("material", item.material)
-                        put("heelHeightStyle", item.heelHeightStyle)
-                        put("toeStyle", item.toeStyle)
-                        put("closureType", item.closureType)
-                        put("formalityLevel", item.formalityLevel)
-                    }
-                    is TieEntity -> {
-                        put("color", item.colorRange)
-                        put("pattern", item.pattern)
-                        put("material", item.material)
-                        put("width", item.widthCms.toString())
-                    }
-                    is WatchEntity -> {
-                        put("brand", item.brand)
-                        put("model", item.model)
-                        put("dialColor", item.dialColor)
-                        put("strapColor", item.strapColor)
-                        put("strapMaterial", item.strapMaterial)
-                    }
-                    is FragranceEntity -> {
-                        put("brand", item.brand)
-                        put("name", item.name)
-                        put("occasion", item.occasionTag)
-                        put("profile", item.profile)
-                    }
-                    is JacketEntity -> {
-                        put("brand", item.brand ?: "")
-                        put("color", item.color)
-                        put("type", item.type)
-                        put("closureType", item.closureType)
-                    }
-                    is BagEntity -> {
-                        put("brand", item.brand ?: "")
-                        put("color", item.color)
-                        put("style", item.style)
-                        put("material", item.material)
-                        put("size", item.size)
-                    }
-                    is DressEntity -> {
-                        put("brand", item.brand ?: "")
-                        put("color", item.color)
-                        put("pattern", item.pattern)
-                        put("length", item.length)
-                        put("sleeveStyle", item.sleeveStyle)
-                        put("material", item.material)
-                    }
-                    is SkirtEntity -> {
-                        put("brand", item.brand ?: "")
-                        put("color", item.color)
-                        put("pattern", item.pattern)
-                        put("length", item.length)
-                        put("style", item.style)
-                        put("material", item.material)
-                    }
-                    is CustomGarmentEntity -> {
-                        put("customCategoryId", item.categoryId)
-                        put("customAttributes", item.attributeValues)
-                    }
-                }
-            }
-        }
-
-        PrendaDialog(
-            category = if (itemToEdit != null) {
-                when(itemToEdit) {
-                    is ShirtEntity -> CategoryFilter.SHIRTS
-                    is PantEntity -> CategoryFilter.PANTS
-                    is ShoeEntity -> CategoryFilter.SHOES
-                    is TieEntity -> CategoryFilter.TIES
-                    is WatchEntity -> CategoryFilter.WATCHES
-                    is FragranceEntity -> CategoryFilter.FRAGRANCES
-                    is JacketEntity -> CategoryFilter.JACKETS
-                    is BagEntity -> CategoryFilter.BAGS
-                    is DressEntity -> CategoryFilter.DRESSES
-                    is SkirtEntity -> CategoryFilter.SKIRTS
-                    is CustomGarmentEntity -> CategoryFilter.ALL 
-                    else -> uiState.selectedCategory
-                }
-            } else uiState.selectedCategory,
-            initialCustomCategoryId = if (itemToEdit != null) {
-                (itemToEdit as? CustomGarmentEntity)?.categoryId
-            } else uiState.selectedCustomCategoryId,
-            customCategories = uiState.customCategories,
-            initialData = initialData,
-            onDismiss = { 
-                showAddDialog = false
-                itemToEdit = null
-            },
-            onSave = { data ->
-                val uriStr = data["imageUrl"] as? String
-                val imageUrl = if (uriStr != null && uriStr.startsWith("content://")) {
-                    saveImageToInternalStorage(context, uriStr.toUri()) ?: uriStr
-                } else uriStr ?: ""
-
-                val brand = data["brand"] as? String ?: "Sin Marca"
-                val color = data["color"] as? String ?: "Desconocido"
-                
-                if (data["isCustom"] == true) {
-                    val catId = data["customCategoryId"] as Long
-                    val attrValues = data["customAttributes"] as String
-                    if (itemToEdit != null && itemToEdit is CustomGarmentEntity) {
-                        viewModel.updateCustomGarment((itemToEdit as CustomGarmentEntity).copy(
-                            imageUrl = imageUrl,
-                            attributeValues = attrValues
-                        ))
-                    } else {
-                        viewModel.insertCustomGarment(CustomGarmentEntity(
-                            categoryId = catId,
-                            imageUrl = imageUrl,
-                            attributeValues = attrValues
-                        ))
-                    }
-                } else if (itemToEdit != null) {
-                    when (val item = itemToEdit) {
-                        is ShirtEntity -> viewModel.updateShirt(item.copy(
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Camisa",
-                            primaryColor = color, 
-                            secondaryColor = data["secondaryColor"] as? String,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            sleeveLength = data["sleeveLength"] as? String ?: "Manga larga",
-                            necklineStyle = data["necklineStyle"] as? String ?: "Camisero",
-                            material = data["material"] as? String ?: "Algodón",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            fit = data["fit"] as? String ?: "Regular",
-                            imageUrl = imageUrl
-                        ))
-                        is PantEntity -> viewModel.updatePant(item.copy(
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Pantalón",
-                            primaryColor = color, 
-                            secondaryColor = data["secondaryColor"] as? String,
-                            material = data["material"] as? String ?: "Algodón",
-                            lengthStyle = data["lengthStyle"] as? String ?: "Largo",
-                            waistRise = data["waistRise"] as? String ?: "Tiro medio",
-                            fitStyle = data["fitStyle"] as? String ?: "Recto",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            imageUrl = imageUrl
-                        ))
-                        is ShoeEntity -> viewModel.updateShoe(item.copy(
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Calzado",
-                            style = data["style"] as? String ?: "Casual",
-                            color = color,
-                            secondaryColor = data["secondaryColor"] as? String,
-                            material = data["material"] as? String ?: "Cuero",
-                            heelHeightStyle = data["heelHeightStyle"] as? String ?: "Plano",
-                            toeStyle = data["toeStyle"] as? String ?: "Puntera lisa",
-                            closureType = data["closureType"] as? String ?: "Cordones",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            imageUrl = imageUrl
-                        ))
-                        is TieEntity -> viewModel.updateTie(item.copy(
-                            colorRange = color, pattern = data["pattern"] as? String ?: "Liso",
-                            material = data["material"] as? String ?: "Seda",
-                            widthCms = (data["width"] as? String)?.toDoubleOrNull() ?: 7.5,
-                            imageUrl = imageUrl
-                        ))
-                        is WatchEntity -> viewModel.updateWatch(item.copy(
-                            brand = brand, model = data["model"] as? String ?: "",
-                            dialColor = data["dialColor"] as? String ?: "",
-                            strapColor = data["strapColor"] as? String ?: "",
-                            strapMaterial = data["strapMaterial"] as? String ?: "",
-                            imageUrl = imageUrl
-                        ))
-                        is FragranceEntity -> viewModel.updateFragrance(item.copy(
-                            brand = brand, name = data["name"] as? String ?: "",
-                            occasionTag = data["occasion"] as? String ?: "",
-                            profile = data["profile"] as? String ?: "",
-                            imageUrl = imageUrl
-                        ))
-                        is JacketEntity -> viewModel.updateJacket(item.copy(
-                            brand = brand, color = color,
-                            type = data["type"] as? String ?: "",
-                            closureType = data["closureType"] as? String ?: "",
-                            imageUrl = imageUrl
-                        ))
-                        is BagEntity -> viewModel.updateBag(item.copy(
-                            brand = brand, color = color,
-                            style = data["style"] as? String ?: "",
-                            material = data["material"] as? String ?: "",
-                            size = data["size"] as? String ?: "Mediano",
-                            imageUrl = imageUrl
-                        ))
-                        is DressEntity -> viewModel.updateDress(item.copy(
-                            brand = brand, color = color,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            length = data["length"] as? String ?: "Midi",
-                            sleeveStyle = data["sleeveStyle"] as? String ?: "Sin mangas",
-                            material = data["material"] as? String ?: "",
-                            imageUrl = imageUrl
-                        ))
-                        is SkirtEntity -> viewModel.updateSkirt(item.copy(
-                            brand = brand, color = color,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            length = data["length"] as? String ?: "Corta",
-                            style = data["style"] as? String ?: "",
-                            material = data["material"] as? String ?: "",
-                            imageUrl = imageUrl
-                        ))
-                    }
-                } else {
-                    val timestamp = System.currentTimeMillis()
-                    val targetCategory = data["selectedCategory"] as? CategoryFilter ?: uiState.selectedCategory
-                    when (targetCategory) {
-                        CategoryFilter.SHIRTS -> viewModel.insertShirt(ShirtEntity(
-                            code = "S$timestamp", 
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Camisa",
-                            primaryColor = color, 
-                            secondaryColor = data["secondaryColor"] as? String,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            sleeveLength = data["sleeveLength"] as? String ?: "Manga larga",
-                            necklineStyle = data["necklineStyle"] as? String ?: "Camisero",
-                            material = data["material"] as? String ?: "Algodón",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            fit = data["fit"] as? String ?: "Regular",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.PANTS -> viewModel.insertPant(PantEntity(
-                            code = "P$timestamp", 
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Pantalón",
-                            primaryColor = color, 
-                            secondaryColor = data["secondaryColor"] as? String,
-                            material = data["material"] as? String ?: "Algodón",
-                            lengthStyle = data["lengthStyle"] as? String ?: "Largo",
-                            waistRise = data["waistRise"] as? String ?: "Tiro medio",
-                            fitStyle = data["fitStyle"] as? String ?: "Recto",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.SHOES -> viewModel.insertShoe(ShoeEntity(
-                            code = "SH$timestamp", 
-                            brand = brand, 
-                            subType = data["subType"] as? String ?: "Calzado",
-                            style = data["style"] as? String ?: "Casual",
-                            color = color,
-                            secondaryColor = data["secondaryColor"] as? String,
-                            material = data["material"] as? String ?: "Cuero",
-                            heelHeightStyle = data["heelHeightStyle"] as? String ?: "Plano",
-                            toeStyle = data["toeStyle"] as? String ?: "Puntera lisa",
-                            closureType = data["closureType"] as? String ?: "Cordones",
-                            formalityLevel = data["formalityLevel"] as? String ?: "Casual",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.TIES -> viewModel.insertTie(TieEntity(
-                            code = "T$timestamp", colorRange = color, 
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            material = data["material"] as? String ?: "Seda",
-                            widthCms = (data["width"] as? String)?.toDoubleOrNull() ?: 7.5,
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.WATCHES -> viewModel.insertWatch(WatchEntity(
-                            code = "W$timestamp", brand = brand, 
-                            model = data["model"] as? String ?: "Modelo",
-                            dialColor = data["dialColor"] as? String ?: "Negro",
-                            strapColor = data["strapColor"] as? String ?: "Negro",
-                            strapMaterial = data["strapMaterial"] as? String ?: "Cuero",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.FRAGRANCES -> viewModel.insertFragrance(FragranceEntity(
-                            code = "F$timestamp", brand = brand, 
-                            name = data["name"] as? String ?: "Fragancia",
-                            occasionTag = data["occasion"] as? String ?: "Diario",
-                            profile = data["profile"] as? String ?: "Fresco",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.JACKETS -> viewModel.insertJacket(JacketEntity(
-                            code = "J$timestamp", brand = brand, color = color,
-                            type = data["type"] as? String ?: "Chaqueta",
-                            closureType = data["closureType"] as? String ?: "Botones",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.BAGS -> viewModel.insertBag(BagEntity(
-                            code = "B$timestamp", brand = brand, color = color,
-                            style = data["style"] as? String ?: "Tote",
-                            material = data["material"] as? String ?: "Cuero",
-                            size = data["size"] as? String ?: "Mediano",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.DRESSES -> viewModel.insertDress(DressEntity(
-                            code = "D$timestamp", brand = brand, color = color,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            length = data["length"] as? String ?: "Midi",
-                            sleeveStyle = data["sleeveStyle"] as? String ?: "Corta",
-                            material = data["material"] as? String ?: "Algodón",
-                            imageUrl = imageUrl
-                        ))
-                        CategoryFilter.SKIRTS -> viewModel.insertSkirt(SkirtEntity(
-                            code = "SK$timestamp", brand = brand, color = color,
-                            pattern = data["pattern"] as? String ?: "Liso",
-                            length = data["length"] as? String ?: "Corta",
-                            style = data["style"] as? String ?: "Lápiz",
-                            material = data["material"] as? String ?: "Algodón",
-                            imageUrl = imageUrl
-                        ))
-                        else -> {
-                            viewModel.insertShirt(
-                                ShirtEntity(
-                                    code = "S$timestamp",
-                                    brand = brand,
-                                    subType = "Camisa",
-                                    primaryColor = color,
-                                    pattern = "Liso",
-                                    sleeveLength = "Manga larga",
-                                    necklineStyle = "Camisero",
-                                    material = "Algodón",
-                                    formalityLevel = "Casual",
-                                    fit = "Regular",
-                                    imageUrl = imageUrl
-                                )
-                            )
-                        } 
-                    }
-                }
-                showAddDialog = false
-                itemToEdit = null
+    if (showDeleteConfirm != null) {
+        DeleteConfirmDialog(
+            item = showDeleteConfirm!!,
+            onDismiss = { showDeleteConfirm = null },
+            onConfirm = {
+                deleteItem(showDeleteConfirm!!, viewModel)
+                showDeleteConfirm = null
             }
         )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CategoryFilterBar(
-    selectedCategory: CategoryFilter,
-    selectedCustomCategoryId: Long?,
-    activeCategories: List<CategoryFilter>,
-    customCategories: List<CustomCategoryEntity>,
-    counts: Map<CategoryFilter, Int>,
-    customCounts: Map<Long, Int>,
-    displayMode: com.myperfectoutfit.data.local.enums.CategoryDisplayMode = com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH,
-    onCategorySelected: (CategoryFilter) -> Unit,
-    onCustomCategorySelected: (Long) -> Unit,
-    onAddCategoryRequested: () -> Unit,
-    onEditCustomCategory: (CustomCategoryEntity) -> Unit,
-    onDeleteCustomCategory: (CustomCategoryEntity) -> Unit
+fun CategoryFilters(
+    uiState: WardrobeUiState,
+    onSelect: (CategoryFilter) -> Unit,
+    onSelectCustom: (Long) -> Unit,
+    onAddCustom: () -> Unit,
+    onDeleteCustom: (CustomCategoryEntity) -> Unit
 ) {
-    val displayCategories = listOf(CategoryFilter.ALL) + activeCategories
+    val activeCategoriesNames = uiState.user?.activeCategories?.split(",") ?: emptyList()
 
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(displayCategories) { category ->
-            FilterChip(
-                selected = selectedCategory == category && selectedCustomCategoryId == null,
-                onClick = { onCategorySelected(category) },
-                label = { 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY) {
-                            Icon(
-                                imageVector = category.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        
-                        if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY) {
-                            if (displayMode == com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            Text(category.displayName)
-                        }
-                        
-                        if (category != CategoryFilter.ALL) {
-                            val count = counts[category] ?: 0
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                color = if (selectedCategory == category && selectedCustomCategoryId == null) 
-                                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
-                                else 
-                                    MaterialTheme.colorScheme.secondaryContainer,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ) {
-                                Text(
-                                    text = count.toString(),
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                CategoryChip(
+                    label = CategoryFilter.ALL.displayName,
+                    count = null,
+                    selected = uiState.selectedCategory == CategoryFilter.ALL && uiState.selectedCustomCategoryId == null,
+                    onClick = { onSelect(CategoryFilter.ALL) }
+                )
+            }
+
+            items(CategoryFilter.entries.filter { 
+                it != CategoryFilter.ALL && it != CategoryFilter.LAUNDRY && activeCategoriesNames.contains(it.name)
+            }) { category ->
+                val count = when(category) {
+                    CategoryFilter.SHIRTS -> uiState.shirts.size
+                    CategoryFilter.PANTS -> uiState.pants.size
+                    CategoryFilter.SHOES -> uiState.shoes.size
+                    CategoryFilter.JACKETS -> uiState.jackets.size
+                    CategoryFilter.FRAGRANCES -> uiState.fragrances.size
+                    CategoryFilter.WATCHES -> uiState.watches.size
+                    CategoryFilter.BAGS -> uiState.bags.size
+                    CategoryFilter.DRESSES -> uiState.dresses.size
+                    CategoryFilter.SKIRTS -> uiState.skirts.size
+                    CategoryFilter.TIES -> uiState.ties.size
+                    else -> 0
                 }
-            )
+                CategoryChip(
+                    label = category.displayName,
+                    count = count,
+                    selected = uiState.selectedCategory == category && uiState.selectedCustomCategoryId == null,
+                    onClick = { onSelect(category) }
+                )
+            }
+            
+            items(uiState.customCategories) { cat ->
+                val count = uiState.customGarments.count { it.categoryId == cat.id }
+                CategoryChip(
+                    label = cat.name,
+                    count = count,
+                    selected = uiState.selectedCustomCategoryId == cat.id,
+                    onClick = { onSelectCustom(cat.id) },
+                    onDelete = { onDeleteCustom(cat) }
+                )
+            }
         }
         
-        items(customCategories) { category ->
-            var showMenu by remember { mutableStateOf(false) }
-            Box {
-                FilterChip(
-                    selected = selectedCustomCategoryId == category.id,
-                    onClick = { }, 
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY) {
-                                Icon(
-                                    imageVector = Icons.Default.Category,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+        IconButton(onClick = onAddCustom, modifier = Modifier.padding(end = 8.dp)) {
+            Icon(Icons.Default.Add, contentDescription = "Nueva Categoría", tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
 
-                            if (displayMode != com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY) {
-                                if (displayMode == com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                }
-                                Text(category.name)
-                            }
+@Composable
+fun CategoryChip(
+    label: String,
+    count: Int?,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    Surface(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+            
+            if (count != null) {
+                Surface(
+                    color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = count.toString(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            
+            if (onDelete != null) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Eliminar",
+                    modifier = Modifier.size(14.dp).clickable { onDelete() },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
 
-                            val count = customCounts[category.id] ?: 0
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                color = if (selectedCustomCategoryId == category.id) 
-                                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
-                                else 
-                                    MaterialTheme.colorScheme.secondaryContainer,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ) {
-                                Text(
-                                    text = count.toString(),
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
+@Composable
+fun WardrobeGrid(
+    uiState: WardrobeUiState,
+    onPreview: (String) -> Unit,
+    onEdit: (Map<String, Any?>) -> Unit,
+    onDelete: (Any) -> Unit
+) {
+    val garmentList = when {
+        uiState.selectedCustomCategoryId != null -> uiState.customGarments.filter { it.categoryId == uiState.selectedCustomCategoryId }
+        uiState.selectedCategory == CategoryFilter.ALL -> (uiState.shirts + uiState.pants + uiState.shoes + uiState.jackets + uiState.fragrances + uiState.watches + uiState.bags + uiState.dresses + uiState.skirts + uiState.customGarments + uiState.ties)
+        uiState.selectedCategory == CategoryFilter.LAUNDRY -> (uiState.shirts + uiState.pants + uiState.jackets + uiState.dresses + uiState.skirts + uiState.customGarments + uiState.ties).filter { 
+            val laundry = when(it) {
+                is ShirtEntity -> it.laundryState
+                is PantEntity -> it.laundryState
+                is JacketEntity -> it.laundryState
+                is DressEntity -> it.laundryState
+                is SkirtEntity -> it.laundryState
+                is CustomGarmentEntity -> it.laundryState
+                is TieEntity -> it.laundryState
+                else -> LaundryState.CLEAN
+            }
+            laundry != LaundryState.CLEAN
+        }
+        uiState.selectedCategory == CategoryFilter.SHIRTS -> uiState.shirts
+        uiState.selectedCategory == CategoryFilter.PANTS -> uiState.pants
+        uiState.selectedCategory == CategoryFilter.SHOES -> uiState.shoes
+        uiState.selectedCategory == CategoryFilter.JACKETS -> uiState.jackets
+        uiState.selectedCategory == CategoryFilter.FRAGRANCES -> uiState.fragrances
+        uiState.selectedCategory == CategoryFilter.WATCHES -> uiState.watches
+        uiState.selectedCategory == CategoryFilter.BAGS -> uiState.bags
+        uiState.selectedCategory == CategoryFilter.DRESSES -> uiState.dresses
+        uiState.selectedCategory == CategoryFilter.SKIRTS -> uiState.skirts
+        uiState.selectedCategory == CategoryFilter.TIES -> uiState.ties
+        else -> emptyList()
+    }
+
+    if (garmentList.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No hay prendas en esta categoría.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(garmentList) { item ->
+                GarmentCard(
+                    item = item,
+                    onClick = { 
+                        val url = when(item) {
+                            is ShirtEntity -> item.imageUrl
+                            is PantEntity -> item.imageUrl
+                            is ShoeEntity -> item.imageUrl
+                            is JacketEntity -> item.imageUrl
+                            is FragranceEntity -> item.imageUrl
+                            is WatchEntity -> item.imageUrl
+                            is BagEntity -> item.imageUrl
+                            is DressEntity -> item.imageUrl
+                            is SkirtEntity -> item.imageUrl
+                            is TieEntity -> item.imageUrl
+                            is CustomGarmentEntity -> item.imageUrl
+                            else -> ""
                         }
-                    }
+                        onPreview(url)
+                    },
+                    onEdit = { onEdit(itemToMap(item)) },
+                    onDelete = { onDelete(item) }
                 )
-                
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .combinedClickable(
-                            onClick = { onCustomCategorySelected(category.id) },
-                            onLongClick = { showMenu = true }
-                        )
-                )
-                
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun GarmentCard(
+    item: Any,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val imageUrl = when(item) {
+        is ShirtEntity -> item.imageUrl
+        is PantEntity -> item.imageUrl
+        is ShoeEntity -> item.imageUrl
+        is JacketEntity -> item.imageUrl
+        is FragranceEntity -> item.imageUrl
+        is WatchEntity -> item.imageUrl
+        is BagEntity -> item.imageUrl
+        is DressEntity -> item.imageUrl
+        is SkirtEntity -> item.imageUrl
+        is TieEntity -> item.imageUrl
+        is CustomGarmentEntity -> item.imageUrl
+        else -> ""
+    }
+    
+    val title = when(item) {
+        is ShirtEntity -> item.brand
+        is PantEntity -> item.brand ?: "Sin marca"
+        is ShoeEntity -> item.brand
+        is JacketEntity -> item.brand ?: "Sin marca"
+        is FragranceEntity -> item.brand
+        is WatchEntity -> item.brand
+        is BagEntity -> item.brand ?: "Sin marca"
+        is DressEntity -> item.brand ?: "Sin marca"
+        is SkirtEntity -> item.brand ?: "Sin marca"
+        is TieEntity -> "Corbata"
+        is CustomGarmentEntity -> item.attributeValues.split("|").firstOrNull { it.contains("Marca", ignoreCase = true) }?.split(":")?.getOrNull(1) ?: "Personalizado"
+        else -> "Prenda"
+    }
+
+    val subtitle = when(item) {
+        is ShirtEntity -> item.pattern
+        is PantEntity -> item.primaryColor
+        is ShoeEntity -> item.color
+        is JacketEntity -> item.color
+        is FragranceEntity -> item.name
+        is WatchEntity -> item.model
+        is BagEntity -> item.color
+        is DressEntity -> item.pattern
+        is SkirtEntity -> item.pattern
+        is TieEntity -> item.colorRange
+        is CustomGarmentEntity -> item.attributeValues.split("|").getOrNull(1)?.split(":")?.getOrNull(1) ?: ""
+        else -> ""
+    }
+
+    val isLaundry = when(item) {
+        is ShirtEntity -> item.laundryState != LaundryState.CLEAN
+        is PantEntity -> item.laundryState != LaundryState.CLEAN
+        is JacketEntity -> item.laundryState != LaundryState.CLEAN
+        is DressEntity -> item.laundryState != LaundryState.CLEAN
+        is SkirtEntity -> item.laundryState != LaundryState.CLEAN
+        is TieEntity -> item.laundryState != LaundryState.CLEAN
+        is CustomGarmentEntity -> item.laundryState != LaundryState.CLEAN
+        else -> false
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Box {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = title,
+                modifier = Modifier.fillMaxWidth().height(180.dp),
+                contentScale = ContentScale.Crop
+            )
+            
+            if (isLaundry) {
+                Surface(
+                    color = Color(0xFFD32F2F),
+                    modifier = Modifier.padding(8.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "Lavandería",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            var showMenu by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones", tint = Color.White.copy(alpha = 0.8f))
+                }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Editar") },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            onEditCustomCategory(category)
-                        }
+                        onClick = { showMenu = false; onEdit() }
                     )
                     DropdownMenuItem(
                         text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                        onClick = {
-                            showMenu = false
-                            onDeleteCustomCategory(category)
-                        }
+                        onClick = { showMenu = false; onDelete() }
                     )
                 }
             }
         }
-
-        item {
-            IconButton(onClick = onAddCategoryRequested) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Categoría", tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            if (subtitle.isNotBlank()) {
+                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
     }
 }
 
 @Composable
-fun PrendaItemCard(
-    title: String,
-    subtitle: String,
-    imageUri: String?,
-    laundryState: LaundryState,
-    onDeleteRequested: () -> Unit,
-    onEditRequested: () -> Unit,
-    onImageClick: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth()
-            .clickable { onImageClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+fun FullImagePreview(imageUrl: String, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.9f))
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.8f)
             ) {
                 AsyncImage(
-                    model = imageUri,
-                    contentDescription = title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                if (laundryState == LaundryState.IN_LAUNDRY) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(4.dp)
-                    ) {
-                        Text(
-                            text = "Lavandería",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Box(modifier = Modifier.align(Alignment.TopEnd)) {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Opciones",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Editar Prenda") },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = null
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onEditRequested()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Eliminar Prenda", color = MaterialTheme.colorScheme.error) },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onDeleteRequested()
-                            }
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-@Composable
-fun AddCategoryDialog(
-    initialCategory: CustomCategoryEntity? = null,
-    onDismiss: () -> Unit,
-    onSave: (name: String, attributes: String, needsLaundry: Boolean) -> Unit
-) {
-    var name by remember { mutableStateOf(initialCategory?.name ?: "") }
-    var attributes by remember { mutableStateOf(initialCategory?.attributeNames ?: "") }
-    var needsLaundry by remember { mutableStateOf(initialCategory?.needsLaundry ?: true) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (initialCategory == null) "Nueva Categoría" else "Editar Categoría") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nombre de la categoría") },
-                    placeholder = { Text("Ej: Sombreros") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = attributes,
-                    onValueChange = { attributes = it },
-                    label = { Text("Atributos (separados por comas)") },
-                    placeholder = { Text("Ej: Color, Material, Estilo") },
-                    modifier = Modifier.fillMaxWidth()
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
                 )
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                 ) {
-                    Checkbox(
-                        checked = needsLaundry,
-                        onCheckedChange = { needsLaundry = it }
-                    )
-                    Text(text = "¿Las prendas van a lavandería?")
-                }
-
-                Text(
-                    text = "Define qué datos quieres guardar y si el uso ensucia la prenda.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(name, attributes, needsLaundry) },
-                enabled = name.isNotBlank() && attributes.isNotBlank()
-            ) {
-                Text(if (initialCategory == null) "Crear" else "Guardar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        }
-    )
-}
-
-@Composable
-fun DropdownField(
-    label: String,
-    value: String,
-    options: List<String>,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var manuallySelectedOther by remember { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
-    
-    val isOtherMode = manuallySelectedOther || (value.isNotEmpty() && !options.contains(value))
-
-    Column(modifier = modifier) {
-        Box {
-            OutlinedTextField(
-                value = if (isOtherMode) "Otro..." else value,
-                onValueChange = { },
-                label = { Text(label) },
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { expanded = !expanded }) {
-                        Icon(
-                            if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                            contentDescription = null
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Box(modifier = Modifier.matchParentSize().clickable { expanded = true })
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            manuallySelectedOther = false
-                            onValueChange(option)
-                            expanded = false
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text("Otro...") },
-                    onClick = {
-                        manuallySelectedOther = true
-                        if (options.contains(value) || value.isEmpty()) onValueChange("")
-                        expanded = false
-                    }
-                )
-            }
-        }
-
-        if (isOtherMode) {
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = value,
-                onValueChange = { onValueChange(it) },
-                label = { Text("Escribe el $label") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-                singleLine = true
-            )
-
-            // Solicitar foco solo cuando se activa el modo "Otro" manualmente
-            LaunchedEffect(manuallySelectedOther) {
-                if (manuallySelectedOther) {
-                    focusRequester.requestFocus()
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrendaDialog(
     category: CategoryFilter,
@@ -1424,7 +581,6 @@ fun PrendaDialog(
     var closureType by remember { mutableStateOf(initialData?.get("closureType") as? String ?: "Cordones") }
     var formalityLevel by remember { mutableStateOf(initialData?.get("formalityLevel") as? String ?: "Casual") }
     var fit by remember { mutableStateOf(initialData?.get("fit") as? String ?: "Regular") }
-    
     var fitStyle by remember { mutableStateOf(initialData?.get("fitStyle") as? String ?: "Recto") }
     var style by remember { mutableStateOf(initialData?.get("style") as? String ?: (if (category == CategoryFilter.SHOES) "Oxford" else "")) }
     var width by remember { mutableStateOf(initialData?.get("width")?.toString() ?: "7.5") }
@@ -1436,7 +592,6 @@ fun PrendaDialog(
     var occasion by remember { mutableStateOf(initialData?.get("occasion") as? String ?: "") }
     var profile by remember { mutableStateOf(initialData?.get("profile") as? String ?: "") }
     var jacketType by remember { mutableStateOf(initialData?.get("type") as? String ?: "") }
-    // closureType ya está declarado arriba para zapatos
     var bagStyle by remember { mutableStateOf(initialData?.get("style") as? String ?: "") }
     var bagSize by remember { mutableStateOf(initialData?.get("size") as? String ?: "Mediano") }
     var dressLength by remember { mutableStateOf(initialData?.get("length") as? String ?: "Midi") }
@@ -1447,14 +602,13 @@ fun PrendaDialog(
     var isAnalyzing by remember { mutableStateOf(false) }
     var offlineMode by remember { mutableStateOf(false) }
     
-    // Listas de opciones para Dropdowns
+    val materialsList = listOf("Algodón", "Denim", "Lino", "Seda", "Lana", "Cuero", "Gamuza", "Poliéster", "Encaje")
     val subTypesList = when(selectedCategory) {
         CategoryFilter.SHIRTS -> listOf("Camisa", "T-Shirt", "Polo", "Blusa", "Top", "Crop Top", "Bodysuit", "Guayabera")
         CategoryFilter.PANTS -> listOf("Pantalón", "Jeans", "Shorts", "Bermudas", "Leggings", "Jumpsuit", "Overol")
         CategoryFilter.SHOES -> listOf("Zapatos de vestir", "Tenis/Sneakers", "Sandalias", "Tacones", "Flats", "Botas", "Mocasines")
         else -> emptyList()
     }
-    val materialsList = listOf("Algodón", "Denim", "Lino", "Seda", "Lana", "Cuero", "Gamuza", "Poliéster", "Encaje")
     val formalityLevelsList = listOf("Formal", "Smart Casual", "Casual", "Deportivo", "Gala")
     val sleeveLengthsList = listOf("Manga larga", "Manga corta", "Manga 3/4", "Sin mangas")
     val necklineStylesList = listOf("Camisero", "Cuello redondo", "Cuello en V", "Mao", "Polo", "Halter")
@@ -1467,156 +621,193 @@ fun PrendaDialog(
     
     val customAttributes = remember { mutableStateMapOf<String, String>() }
     LaunchedEffect(selectedCustomCategory) {
-        selectedCustomCategory?.let { cat ->
+        val customCat = selectedCustomCategory
+        if (customCat != null) {
             val existingValues = (initialData?.get("customAttributes") as? String)
                 ?.split("|")?.associate { 
                     val split = it.split(":")
                     split[0] to (split.getOrNull(1) ?: "")
                 } ?: emptyMap()
-            
-            cat.attributeNames.split(",").forEach { attr ->
+            customCat.attributeNames.split(",").forEach { attr ->
                 customAttributes[attr.trim()] = existingValues[attr.trim()] ?: ""
             }
         }
     }
 
-    var selectedImageUri by remember { 
-        mutableStateOf(initialData?.get("imageUrl")?.toString()?.toUri()) 
-    }
+    var selectedImageUri by remember { mutableStateOf(initialData?.get("imageUrl")?.toString()?.toUri()) }
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    val galleryLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             selectedImageUri = uri
             isAnalyzing = true
             offlineMode = false
-            analyzeImage(
-                uri = uri, 
-                context = context, 
-                viewModel = viewModel, 
-                scope = scope,
-                categoryName = selectedCustomCategory?.name ?: selectedCategory.displayName,
-                customAttributes = selectedCustomCategory?.attributeNames
-            ) { json, offline ->
-                isAnalyzing = false
-                offlineMode = offline
-                brand = json.optString("brand", brand)
-                color = json.optString("color", color)
-                pattern = json.optString("pattern", pattern)
-                material = json.optString("material", material)
-                
-                val aiSubType = json.optString("subType", "")
-                if (aiSubType.isNotBlank()) subType = aiSubType
-                
-                secondaryColor = json.optString("secondaryColor", secondaryColor)
-                sleeveLength = json.optString("sleeveLength", sleeveLength)
-                necklineStyle = json.optString("necklineStyle", necklineStyle)
-                formalityLevel = json.optString("formalityLevel", formalityLevel)
-                lengthStyle = json.optString("lengthStyle", lengthStyle)
-                waistRise = json.optString("waistRise", waistRise)
-                heelHeightStyle = json.optString("heelHeightStyle", heelHeightStyle)
-                toeStyle = json.optString("toeStyle", toeStyle)
-                closureType = json.optString("closureType", closureType)
+            val currentCat = selectedCustomCategory?.name ?: selectedCategory.displayName
+            val currentAttrs = selectedCustomCategory?.attributeNames
+            analyzeImage(uri, context, viewModel, scope, currentCat, currentAttrs,
+                onResult = { json, offline ->
+                    isAnalyzing = false
+                    offlineMode = offline
+                    
+                    // Función auxiliar para obtener strings limpios y manejar listas de la IA
+                    fun getClean(key: String): String {
+                        val v = json.opt(key) ?: return ""
+                        if (v == JSONObject.NULL) return ""
+                        
+                        // Si la IA devolvió una lista ["a", "b"], la convertimos en "A, B"
+                        if (v is org.json.JSONArray) {
+                            val items = mutableListOf<String>()
+                            for (i in 0 until v.length()) {
+                                items.add(v.optString(i))
+                            }
+                            return items.joinToString(", ").replace("\\", "")
+                        }
+                        
+                        val s = v.toString()
+                        return if (s == "null" || s == "None") "" else s.replace("\\", "")
+                    }
 
-                val other = json.optString("other", "")
-                if (other.isNotBlank()) {
-                    if (necklineStyle.isBlank()) necklineStyle = other
-                    if (jacketType.isBlank()) jacketType = other
-                }
-                
-                val aiStyle = json.optString("style", "")
-                if (aiStyle.isNotBlank()) {
-                    style = aiStyle
-                    fit = aiStyle
-                    fitStyle = aiStyle
-                }
-
-                if (selectedCustomCategory != null) {
-                    selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
-                        val key = attr.trim()
-                        val value = json.optString(key, "")
-                        if (value.isNotBlank()) customAttributes[key] = value
+                    brand = getClean("brand").ifBlank { brand }
+                    name = getClean("name").ifBlank { name }
+                    val aiOccasion = getClean("occasionTag")
+                    if (aiOccasion.isNotBlank()) occasion = aiOccasion
+                    profile = getClean("profile").ifBlank { profile }
+                    model = getClean("model").ifBlank { model }
+                    dialColor = getClean("dialColor").ifBlank { dialColor }
+                    strapColor = getClean("strapColor").ifBlank { strapColor }
+                    strapMaterial = getClean("strapMaterial").ifBlank { strapMaterial }
+                    
+                    val detectedColor = getClean("primaryColor").ifBlank { getClean("color") }
+                    if (detectedColor.isNotBlank()) color = detectedColor
+                    
+                    secondaryColor = getClean("secondaryColor").ifBlank { secondaryColor }
+                    pattern = getClean("pattern").ifBlank { pattern }
+                    material = getClean("material").ifBlank { material }
+                    val aiWidth = getClean("widthCms")
+                    if (aiWidth.isNotBlank()) width = aiWidth
+                    val aiType = getClean("type")
+                    if (aiType.isNotBlank()) jacketType = aiType
+                    val aiSize = getClean("size")
+                    if (aiSize.isNotBlank()) bagSize = aiSize
+                    val aiLength = getClean("length")
+                    if (aiLength.isNotBlank()) { dressLength = aiLength; skirtLength = aiLength }
+                    val aiSleeveStyle = getClean("sleeveStyle")
+                    if (aiSleeveStyle.isNotBlank()) sleeveStyle = aiSleeveStyle
+                    val aiSubType = getClean("subType")
+                    if (aiSubType.isNotBlank()) subType = aiSubType
+                    sleeveLength = getClean("sleeveLength").ifBlank { sleeveLength }
+                    necklineStyle = getClean("necklineStyle").ifBlank { necklineStyle }
+                    formalityLevel = getClean("formalityLevel").ifBlank { formalityLevel }
+                    lengthStyle = getClean("lengthStyle").ifBlank { lengthStyle }
+                    waistRise = getClean("waistRise").ifBlank { waistRise }
+                    fitStyle = getClean("fitStyle").ifBlank { fitStyle }
+                    fit = getClean("fit").ifBlank { fit }
+                    
+                    val otherVal = getClean("other")
+                    if (otherVal.isNotBlank()) {
+                        if (necklineStyle.isBlank()) necklineStyle = otherVal
+                        if (jacketType.isBlank()) jacketType = otherVal
+                    }
+                    val aiStyle = getClean("style")
+                    if (aiStyle.isNotBlank()) {
+                        style = aiStyle; fit = aiStyle; fitStyle = aiStyle; bagStyle = aiStyle; skirtStyle = aiStyle
+                    }
+                    val customCat = selectedCustomCategory
+                    if (customCat != null) {
+                        customCat.attributeNames.split(",").forEach { attr ->
+                            val key = attr.trim()
+                            val value = getClean(key)
+                            if (value.isNotBlank()) customAttributes[key] = value
+                        }
                     }
                 }
-            }
+            )
         }
     }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success: Boolean ->
+    val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             val uri = tempCameraUri
             selectedImageUri = uri
             uri?.let {
                 isAnalyzing = true
                 offlineMode = false
-                analyzeImage(
-                    uri = it, 
-                    context = context, 
-                    viewModel = viewModel, 
-                    scope = scope,
-                    categoryName = selectedCustomCategory?.name ?: selectedCategory.displayName,
-                    customAttributes = selectedCustomCategory?.attributeNames
-                ) { json, offline ->
-                    isAnalyzing = false
-                    offlineMode = offline
-                    brand = json.optString("brand", brand)
-                    color = json.optString("color", color)
-                    pattern = json.optString("pattern", pattern)
-                    material = json.optString("material", material)
-                    
-                    val aiSubType = json.optString("subType", "")
-                    if (aiSubType.isNotBlank()) subType = aiSubType
-                    
-                    secondaryColor = json.optString("secondaryColor", secondaryColor)
-                    sleeveLength = json.optString("sleeveLength", sleeveLength)
-                    necklineStyle = json.optString("necklineStyle", necklineStyle)
-                    formalityLevel = json.optString("formalityLevel", formalityLevel)
-                    lengthStyle = json.optString("lengthStyle", lengthStyle)
-                    waistRise = json.optString("waistRise", waistRise)
-                    heelHeightStyle = json.optString("heelHeightStyle", heelHeightStyle)
-                    toeStyle = json.optString("toeStyle", toeStyle)
-                    closureType = json.optString("closureType", closureType)
+                val currentCat = selectedCustomCategory?.name ?: selectedCategory.displayName
+                val currentAttrs = selectedCustomCategory?.attributeNames
+                analyzeImage(it, context, viewModel, scope, currentCat, currentAttrs,
+                    onResult = { json, offline ->
+                        isAnalyzing = false
+                        offlineMode = offline
+                        
+                        fun getClean(key: String): String {
+                            val v = json.optString(key, "")
+                            return if (v == "null" || v == "None") "" else v
+                        }
 
-                    val other = json.optString("other", "")
-                    if (other.isNotBlank()) {
-                        if (necklineStyle.isBlank()) necklineStyle = other
-                        if (jacketType.isBlank()) jacketType = other
-                    }
-                    
-                    val aiStyle = json.optString("style", "")
-                    if (aiStyle.isNotBlank()) {
-                        style = aiStyle
-                        fit = aiStyle
-                        fitStyle = aiStyle
-                    }
-
-                    if (selectedCustomCategory != null) {
-                        selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
-                            val key = attr.trim()
-                            val value = json.optString(key, "")
-                            if (value.isNotBlank()) customAttributes[key] = value
+                        brand = getClean("brand").ifBlank { brand }
+                        name = getClean("name").ifBlank { name }
+                        val aiOccasion = getClean("occasionTag")
+                        if (aiOccasion.isNotBlank()) occasion = aiOccasion
+                        profile = getClean("profile").ifBlank { profile }
+                        model = getClean("model").ifBlank { model }
+                        dialColor = getClean("dialColor").ifBlank { dialColor }
+                        strapColor = getClean("strapColor").ifBlank { strapColor }
+                        strapMaterial = getClean("strapMaterial").ifBlank { strapMaterial }
+                        
+                        val detectedColor = getClean("primaryColor").ifBlank { getClean("color") }
+                        if (detectedColor.isNotBlank()) color = detectedColor
+                        
+                        secondaryColor = getClean("secondaryColor").ifBlank { secondaryColor }
+                        pattern = getClean("pattern").ifBlank { pattern }
+                        material = getClean("material").ifBlank { material }
+                        val aiWidth = getClean("widthCms")
+                        if (aiWidth.isNotBlank()) width = aiWidth
+                        val aiType = getClean("type")
+                        if (aiType.isNotBlank()) jacketType = aiType
+                        val aiSize = getClean("size")
+                        if (aiSize.isNotBlank()) bagSize = aiSize
+                        val aiLength = getClean("length")
+                        if (aiLength.isNotBlank()) { dressLength = aiLength; skirtLength = aiLength }
+                        val aiSleeveStyle = getClean("sleeveStyle")
+                        if (aiSleeveStyle.isNotBlank()) sleeveStyle = aiSleeveStyle
+                        val aiSubType = getClean("subType")
+                        if (aiSubType.isNotBlank()) subType = aiSubType
+                        sleeveLength = getClean("sleeveLength").ifBlank { sleeveLength }
+                        necklineStyle = getClean("necklineStyle").ifBlank { necklineStyle }
+                        formalityLevel = getClean("formalityLevel").ifBlank { formalityLevel }
+                        lengthStyle = getClean("lengthStyle").ifBlank { lengthStyle }
+                        waistRise = getClean("waistRise").ifBlank { waistRise }
+                        fitStyle = getClean("fitStyle").ifBlank { fitStyle }
+                        fit = getClean("fit").ifBlank { fit }
+                        
+                        val otherVal = getClean("other")
+                        if (otherVal.isNotBlank()) {
+                            if (necklineStyle.isBlank()) necklineStyle = otherVal
+                            if (jacketType.isBlank()) jacketType = otherVal
+                        }
+                        val aiStyle = getClean("style")
+                        if (aiStyle.isNotBlank()) {
+                            style = aiStyle; fit = aiStyle; fitStyle = aiStyle; bagStyle = aiStyle; skirtStyle = aiStyle
+                        }
+                        val customCat = selectedCustomCategory
+                        if (customCat != null) {
+                            customCat.attributeNames.split(",").forEach { attr ->
+                                val key = attr.trim()
+                                val value = getClean(key)
+                                if (value.isNotBlank()) customAttributes[key] = value
+                            }
                         }
                     }
-                }
+                )
             }
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
+    val permissionLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
             val tempFile = File(context.cacheDir, "temp_garment_${System.currentTimeMillis()}.jpg")
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                tempFile
-            )
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
             tempCameraUri = uri
             cameraLauncher.launch(uri)
         }
@@ -1683,10 +874,7 @@ fun PrendaDialog(
                     }
                 }
 
-                Button(
-                    onClick = { showSourceDialog = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Button(onClick = { showSourceDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     if (isAnalyzing) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -1706,17 +894,10 @@ fun PrendaDialog(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Modo offline: completa los datos manualmente.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
+                            Text(text = "Modo offline: completa los datos manualmente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
                 }
@@ -1730,43 +911,21 @@ fun PrendaDialog(
                         }
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             val activeCategoriesNames = wardrobeUiState.user?.activeCategories?.split(",") ?: emptyList()
-                            
-                            CategoryFilter.entries.filter { 
-                                it != CategoryFilter.ALL && 
-                                it != CategoryFilter.LAUNDRY && 
-                                activeCategoriesNames.contains(it.name) 
-                            }.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat.displayName) },
-                                    onClick = {
-                                        selectedCategory = cat
-                                        selectedCustomCategory = null
-                                        expanded = false
-                                    }
-                                )
+                            CategoryFilter.entries.filter { it != CategoryFilter.ALL && it != CategoryFilter.LAUNDRY && activeCategoriesNames.contains(it.name) }.forEach { cat ->
+                                DropdownMenuItem(text = { Text(cat.displayName) }, onClick = { selectedCategory = cat; selectedCustomCategory = null; expanded = false })
                             }
                             customCategories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat.name) },
-                                    onClick = {
-                                        selectedCustomCategory = cat
-                                        expanded = false
-                                    }
-                                )
+                                DropdownMenuItem(text = { Text(cat.name) }, onClick = { selectedCustomCategory = cat; expanded = false })
                             }
                         }
                     }
                 }
 
-                if (selectedCustomCategory != null) {
-                    selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
+                val currentCustomCat = selectedCustomCategory
+                if (currentCustomCat != null) {
+                    currentCustomCat.attributeNames.split(",").forEach { attr ->
                         val key = attr.trim()
-                        OutlinedTextField(
-                            value = customAttributes[key] ?: "",
-                            onValueChange = { customAttributes[key] = it },
-                            label = { Text(key) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        OutlinedTextField(value = customAttributes[key] ?: "", onValueChange = { customAttributes[key] = it }, label = { Text(key) }, modifier = Modifier.fillMaxWidth())
                     }
                 } else {
                     when (selectedCategory) {
@@ -1820,8 +979,8 @@ fun PrendaDialog(
                         CategoryFilter.FRAGRANCES -> {
                             OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
-                            DropdownField(label = "Ocasión", value = occasion, options = listOf("Diario", "Oficina", "Noche", "Cita", "Formal", "Deporte"), onValueChange = { occasion = it })
-                            DropdownField(label = "Perfil", value = profile, options = listOf("Fresco", "Amaderado", "Cítrico", "Oriental", "Floral", "Especiado"), onValueChange = { profile = it })
+                            OutlinedTextField(value = occasion, onValueChange = { occasion = it }, label = { Text("Ocasión") }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Ej: Diario, Cita, Noche...") })
+                            OutlinedTextField(value = profile, onValueChange = { profile = it }, label = { Text("Perfil Olfativo") }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Ej: Fresco, Cítrico, Amaderado...") })
                         }
                         CategoryFilter.JACKETS -> {
                             OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth())
@@ -1852,9 +1011,7 @@ fun PrendaDialog(
                             DropdownField(label = "Estilo", value = skirtStyle, options = listOf("Lápiz", "A-Line", "Plisada", "Circular", "Mini", "Midi", "Maxi"), onValueChange = { skirtStyle = it })
                             DropdownField(label = "Material", value = material, options = materialsList, onValueChange = { material = it })
                         }
-                        else -> {
-                            Text("Selecciona una categoría válida.")
-                        }
+                        else -> { Text("Selecciona una categoría válida.") }
                     }
                 }
             }
@@ -1862,45 +1019,32 @@ fun PrendaDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val finalImageUrl = selectedImageUri?.let { uri ->
+                        if (uri.scheme == "content" || uri.toString().contains("cache")) {
+                            saveImageToInternalStorage(context, uri)
+                        } else {
+                            uri.toString()
+                        }
+                    } ?: ""
+
                     val data = mutableMapOf<String, Any?>()
-                    data["imageUrl"] = selectedImageUri?.toString()
+                    data["imageUrl"] = finalImageUrl
                     data["selectedCategory"] = selectedCategory
                     data["customCategoryId"] = selectedCustomCategory?.id
-                    
                     if (selectedCustomCategory != null) {
                         data["isCustom"] = true
                         data["customAttributes"] = customAttributes.entries.joinToString("|") { "${it.key}:${it.value}" }
                     } else {
-                        data["brand"] = brand
-                        data["subType"] = subType
-                        data["color"] = color
-                        data["secondaryColor"] = secondaryColor
-                        data["pattern"] = pattern
-                        data["sleeveLength"] = sleeveLength
-                        data["necklineStyle"] = necklineStyle
-                        data["material"] = material
-                        data["formalityLevel"] = formalityLevel
-                        data["fit"] = fit
-                        data["style"] = style
-                        data["heelHeightStyle"] = heelHeightStyle
-                        data["toeStyle"] = toeStyle
-                        data["closureType"] = closureType
-                        data["width"] = width
-                        data["model"] = model
-                        data["dialColor"] = dialColor
-                        data["strapColor"] = strapColor
-                        data["strapMaterial"] = strapMaterial
-                        data["name"] = name
-                        data["occasion"] = occasion
-                        data["profile"] = profile
-                        data["type"] = jacketType
-                        data["styleForCustom"] = if (selectedCategory == CategoryFilter.BAGS) bagStyle else skirtStyle
-                        data["size"] = bagSize
-                        data["length"] = if (selectedCategory == CategoryFilter.DRESSES) dressLength else skirtLength
-                        data["sleeveStyle"] = sleeveStyle
-                        data["lengthStyle"] = lengthStyle
-                        data["waistRise"] = waistRise
-                        data["fitStyle"] = fitStyle
+                        data["brand"] = brand; data["subType"] = subType; data["color"] = color; data["secondaryColor"] = secondaryColor
+                        data["pattern"] = pattern; data["sleeveLength"] = sleeveLength; data["necklineStyle"] = necklineStyle
+                        data["material"] = material; data["formalityLevel"] = formalityLevel; data["fit"] = fit
+                        data["style"] = style; data["heelHeightStyle"] = heelHeightStyle; data["toeStyle"] = toeStyle
+                        data["closureType"] = closureType; data["width"] = width; data["model"] = model
+                        data["dialColor"] = dialColor; data["strapColor"] = strapColor; data["strapMaterial"] = strapMaterial
+                        data["name"] = name; data["occasion"] = occasion; data["profile"] = profile
+                        data["type"] = jacketType; data["styleForCustom"] = if (selectedCategory == CategoryFilter.BAGS) bagStyle else skirtStyle
+                        data["size"] = bagSize; data["length"] = if (selectedCategory == CategoryFilter.DRESSES) dressLength else skirtLength
+                        data["sleeveStyle"] = sleeveStyle; data["lengthStyle"] = lengthStyle; data["waistRise"] = waistRise; data["fitStyle"] = fitStyle
                     }
                     onSave(data)
                 },
@@ -1914,14 +1058,152 @@ fun PrendaDialog(
                         else -> brand.isNotEmpty()
                     }
                 }
-            ) {
-                Text("Guardar")
-            }
+            ) { Text("Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
+}
+
+@Composable
+fun DropdownField(label: String, value: String, options: List<String>, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    var manuallySelectedOther by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val isOtherMode = manuallySelectedOther || (value.isNotEmpty() && !options.contains(value))
+    Column(modifier = modifier) {
+        Box {
+            OutlinedTextField(value = if (isOtherMode) "Otro..." else value, onValueChange = { }, label = { Text(label) }, readOnly = true, trailingIcon = { IconButton(onClick = { expanded = !expanded }) { Icon(if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown, contentDescription = null) } }, modifier = Modifier.fillMaxWidth())
+            Box(modifier = Modifier.matchParentSize().clickable { expanded = true })
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.fillMaxWidth(0.9f)) {
+                options.forEach { option ->
+                    DropdownMenuItem(text = { Text(option) }, onClick = { manuallySelectedOther = false; onValueChange(option); expanded = false })
+                }
+                DropdownMenuItem(text = { Text("Otro...") }, onClick = { manuallySelectedOther = true; if (options.contains(value) || value.isEmpty()) onValueChange(""); expanded = false })
+            }
+        }
+        if (isOtherMode) {
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(value = value, onValueChange = { onValueChange(it) }, label = { Text("Escribe el $label") }, modifier = Modifier.fillMaxWidth().focusRequester(focusRequester), singleLine = true)
+            LaunchedEffect(manuallySelectedOther) { if (manuallySelectedOther) focusRequester.requestFocus() }
+        }
+    }
+}
+
+@Composable
+fun CustomCategoryDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var attrs by remember { mutableStateOf("") }
+    var needsLaundry by remember { mutableStateOf(true) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Nueva Categoría") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre de la categoría") }, placeholder = { Text("Ej: Relojes, Cinturones...") }, modifier = Modifier.fillMaxWidth()) ; OutlinedTextField(value = attrs, onValueChange = { attrs = it }, label = { Text("Atributos (separados por coma)") }, placeholder = { Text("Ej: Marca, Color, Material...") }, modifier = Modifier.fillMaxWidth()) ; Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = needsLaundry, onCheckedChange = { needsLaundry = it }) ; Spacer(modifier = Modifier.width(8.dp)) ; Text("¿Requiere lavandería?") } } }, confirmButton = { Button(onClick = { onSave(name, attrs, needsLaundry) }, enabled = name.isNotBlank() && attrs.isNotBlank()) { Text("Crear") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+@Composable
+fun DeleteConfirmDialog(item: Any, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Eliminar Prenda") }, text = { Text("¿Estás seguro de que quieres eliminar esta prenda del armario? Esta acción no se puede deshacer.") }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+private fun itemToMap(item: Any): Map<String, Any?> {
+    val data = mutableMapOf<String, Any?>()
+    when (item) {
+        is ShirtEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["subType"] = item.subType; data["color"] = item.primaryColor; data["secondaryColor"] = item.secondaryColor; data["pattern"] = item.pattern; data["sleeveLength"] = item.sleeveLength; data["necklineStyle"] = item.necklineStyle; data["material"] = item.material; data["formalityLevel"] = item.formalityLevel; data["fit"] = item.fit; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.SHIRTS
+        }
+        is PantEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["subType"] = item.subType; data["color"] = item.primaryColor; data["secondaryColor"] = item.secondaryColor; data["material"] = item.material; data["lengthStyle"] = item.lengthStyle; data["waistRise"] = item.waistRise; data["fitStyle"] = item.fitStyle; data["formalityLevel"] = item.formalityLevel; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.PANTS
+        }
+        is ShoeEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["subType"] = item.subType; data["style"] = item.style; data["color"] = item.color; data["secondaryColor"] = item.secondaryColor; data["material"] = item.material; data["heelHeightStyle"] = item.heelHeightStyle; data["toeStyle"] = item.toeStyle; data["closureType"] = item.closureType; data["formalityLevel"] = item.formalityLevel; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.SHOES
+        }
+        is JacketEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["color"] = item.color; data["type"] = item.type; data["closureType"] = item.closureType; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.JACKETS
+        }
+        is FragranceEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["name"] = item.name; data["occasion"] = item.occasionTag; data["profile"] = item.profile; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.FRAGRANCES
+        }
+        is WatchEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["model"] = item.model; data["dialColor"] = item.dialColor; data["strapColor"] = item.strapColor; data["strapMaterial"] = item.strapMaterial; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.WATCHES
+        }
+        is BagEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["color"] = item.color; data["style"] = item.style; data["material"] = item.material; data["size"] = item.size; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.BAGS
+        }
+        is DressEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["color"] = item.color; data["pattern"] = item.pattern; data["length"] = item.length; data["sleeveStyle"] = item.sleeveStyle; data["material"] = item.material; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.DRESSES
+        }
+        is SkirtEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["brand"] = item.brand; data["color"] = item.color; data["pattern"] = item.pattern; data["length"] = item.length; data["style"] = item.style; data["material"] = item.material; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.SKIRTS
+        }
+        is TieEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["color"] = item.colorRange; data["pattern"] = item.pattern; data["material"] = item.material; data["width"] = item.widthCms; data["imageUrl"] = item.imageUrl; data["selectedCategory"] = CategoryFilter.TIES
+        }
+        is CustomGarmentEntity -> {
+            data["id"] = item.id; data["userId"] = item.userId; data["categoryId"] = item.categoryId; data["imageUrl"] = item.imageUrl; data["customAttributes"] = item.attributeValues; data["selectedCategory"] = CategoryFilter.ALL; data["customCategoryId"] = item.categoryId
+        }
+    }
+    return data
+}
+
+private fun saveNewItem(data: Map<String, Any?>, viewModel: WardrobeViewModel) {
+    val userId = (data["userId"] as? Long) ?: 1L
+    val imageUrl = (data["imageUrl"] as? String) ?: ""
+    when (data["selectedCategory"] as? CategoryFilter) {
+        CategoryFilter.SHIRTS -> viewModel.insertShirt(ShirtEntity(userId = userId, brand = data["brand"] as String, subType = data["subType"] as String, primaryColor = data["color"] as String, secondaryColor = data["secondaryColor"] as? String, pattern = data["pattern"] as String, sleeveLength = data["sleeveLength"] as String, necklineStyle = data["necklineStyle"] as String, material = data["material"] as String, formalityLevel = data["formalityLevel"] as String, fit = data["fit"] as String, imageUrl = imageUrl, code = "SH${System.currentTimeMillis()}"))
+        CategoryFilter.PANTS -> viewModel.insertPant(PantEntity(userId = userId, brand = data["brand"] as? String, subType = data["subType"] as String, primaryColor = data["color"] as String, secondaryColor = data["secondaryColor"] as? String, material = data["material"] as String, lengthStyle = data["lengthStyle"] as String, waistRise = data["waistRise"] as String, fitStyle = data["fitStyle"] as String, formalityLevel = data["formalityLevel"] as String, imageUrl = imageUrl, code = "PA${System.currentTimeMillis()}"))
+        CategoryFilter.SHOES -> viewModel.insertShoe(ShoeEntity(userId = userId, brand = data["brand"] as String, subType = data["subType"] as String, style = data["style"] as String, color = data["color"] as String, material = data["material"] as String, heelHeightStyle = data["heelHeightStyle"] as String, toeStyle = data["toeStyle"] as String, closureType = data["closureType"] as String, formalityLevel = data["formalityLevel"] as String, imageUrl = imageUrl, code = "SH${System.currentTimeMillis()}"))
+        CategoryFilter.JACKETS -> viewModel.insertJacket(JacketEntity(userId = userId, brand = data["brand"] as? String, color = data["color"] as String, type = data["type"] as String, closureType = data["closureType"] as String, imageUrl = imageUrl, code = "JA${System.currentTimeMillis()}"))
+        CategoryFilter.FRAGRANCES -> viewModel.insertFragrance(FragranceEntity(userId = userId, brand = data["brand"] as String, name = data["name"] as String, occasionTag = data["occasion"] as String, profile = data["profile"] as String, imageUrl = imageUrl, code = "FR${System.currentTimeMillis()}"))
+        CategoryFilter.WATCHES -> viewModel.insertWatch(WatchEntity(userId = userId, brand = data["brand"] as String, model = data["model"] as String, dialColor = data["dialColor"] as String, strapColor = data["strapColor"] as String, strapMaterial = data["strapMaterial"] as String, imageUrl = imageUrl, code = "WA${System.currentTimeMillis()}"))
+        CategoryFilter.BAGS -> viewModel.insertBag(BagEntity(userId = userId, brand = data["brand"] as? String, color = data["color"] as String, style = data["style"] as String, material = data["material"] as String, size = data["size"] as String, imageUrl = imageUrl, code = "BA${System.currentTimeMillis()}"))
+        CategoryFilter.DRESSES -> viewModel.insertDress(DressEntity(userId = userId, brand = data["brand"] as? String, color = data["color"] as String, pattern = data["pattern"] as String, length = data["length"] as String, sleeveStyle = data["sleeveStyle"] as String, material = data["material"] as String, imageUrl = imageUrl, code = "DR${System.currentTimeMillis()}"))
+        CategoryFilter.SKIRTS -> viewModel.insertSkirt(SkirtEntity(userId = userId, brand = data["brand"] as? String, color = data["color"] as String, pattern = data["pattern"] as String, length = data["length"] as String, style = data["style"] as String, material = data["material"] as String, imageUrl = imageUrl, code = "SK${System.currentTimeMillis()}"))
+        CategoryFilter.TIES -> viewModel.insertTie(TieEntity(userId = userId, colorRange = data["color"] as String, pattern = data["pattern"] as String, material = data["material"] as String, widthCms = (data["width"]?.toString()?.toDoubleOrNull() ?: 7.5), imageUrl = imageUrl, code = "TI${System.currentTimeMillis()}"))
+        else -> {
+            if (data["isCustom"] == true) {
+                viewModel.insertCustomGarment(CustomGarmentEntity(categoryId = data["customCategoryId"] as Long, userId = userId, imageUrl = imageUrl, attributeValues = data["customAttributes"] as String))
+            }
+        }
+    }
+}
+
+private fun updateExistingItem(data: Map<String, Any?>, original: Map<String, Any?>, viewModel: WardrobeViewModel) {
+    val id = original["id"] as Long
+    val userId = original["userId"] as Long
+    val code = (original["code"] as? String) ?: "UP${System.currentTimeMillis()}"
+    val imageUrl = (data["imageUrl"] as? String) ?: (original["imageUrl"] as String)
+    when (data["selectedCategory"] as? CategoryFilter) {
+        CategoryFilter.SHIRTS -> viewModel.updateShirt(ShirtEntity(id = id, userId = userId, brand = data["brand"] as String, subType = data["subType"] as String, primaryColor = data["color"] as String, secondaryColor = data["secondaryColor"] as? String, pattern = data["pattern"] as String, sleeveLength = data["sleeveLength"] as String, necklineStyle = data["necklineStyle"] as String, material = data["material"] as String, formalityLevel = data["formalityLevel"] as String, fit = data["fit"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.PANTS -> viewModel.updatePant(PantEntity(id = id, userId = userId, brand = data["brand"] as? String, subType = data["subType"] as String, primaryColor = data["color"] as String, secondaryColor = data["secondaryColor"] as? String, material = data["material"] as String, lengthStyle = data["lengthStyle"] as String, waistRise = data["waistRise"] as String, fitStyle = data["fitStyle"] as String, formalityLevel = data["formalityLevel"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.SHOES -> viewModel.updateShoe(ShoeEntity(id = id, userId = userId, brand = data["brand"] as String, subType = data["subType"] as String, style = data["style"] as String, color = data["color"] as String, material = data["material"] as String, heelHeightStyle = data["heelHeightStyle"] as String, toeStyle = data["toeStyle"] as String, closureType = data["closureType"] as String, formalityLevel = data["formalityLevel"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.JACKETS -> viewModel.updateJacket(JacketEntity(id = id, userId = userId, brand = data["brand"] as? String, color = data["color"] as String, type = data["type"] as String, closureType = data["closureType"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.FRAGRANCES -> viewModel.updateFragrance(FragranceEntity(id = id, userId = userId, brand = data["brand"] as String, name = data["name"] as String, occasionTag = data["occasion"] as String, profile = data["profile"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.WATCHES -> viewModel.updateWatch(WatchEntity(id = id, userId = userId, brand = data["brand"] as String, model = data["model"] as String, dialColor = data["dialColor"] as String, strapColor = data["strapColor"] as String, strapMaterial = data["strapMaterial"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.BAGS -> viewModel.updateBag(BagEntity(id = id, userId = userId, brand = data["brand"] as? String, color = data["color"] as String, style = data["style"] as String, material = data["material"] as String, size = data["size"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.DRESSES -> viewModel.updateDress(DressEntity(id = id, userId = userId, brand = data["brand"] as? String, color = data["color"] as String, pattern = data["pattern"] as String, length = data["length"] as String, sleeveStyle = data["sleeveStyle"] as String, material = data["material"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.SKIRTS -> viewModel.updateSkirt(SkirtEntity(id = id, userId = userId, brand = data["brand"] as? String, color = data["color"] as String, pattern = data["pattern"] as String, length = data["length"] as String, style = data["style"] as String, material = data["material"] as String, imageUrl = imageUrl, code = code))
+        CategoryFilter.TIES -> viewModel.updateTie(TieEntity(id = id, userId = userId, colorRange = data["color"] as String, pattern = data["pattern"] as String, material = data["material"] as String, widthCms = (data["width"]?.toString()?.toDoubleOrNull() ?: 7.5), imageUrl = imageUrl, code = code))
+        else -> {
+            if (data["isCustom"] == true) {
+                viewModel.updateCustomGarment(CustomGarmentEntity(id = id, categoryId = data["customCategoryId"] as Long, userId = userId, imageUrl = imageUrl, attributeValues = data["customAttributes"] as String))
+            }
+        }
+    }
+}
+
+private fun deleteItem(item: Any, viewModel: WardrobeViewModel) {
+    when (item) {
+        is ShirtEntity -> viewModel.deleteShirt(item)
+        is PantEntity -> viewModel.deletePant(item)
+        is ShoeEntity -> viewModel.deleteShoe(item)
+        is TieEntity -> viewModel.deleteTie(item)
+        is WatchEntity -> viewModel.deleteWatch(item)
+        is FragranceEntity -> viewModel.deleteFragrance(item)
+        is JacketEntity -> viewModel.deleteJacket(item)
+        is BagEntity -> viewModel.deleteBag(item)
+        is DressEntity -> viewModel.deleteDress(item)
+        is SkirtEntity -> viewModel.deleteSkirt(item)
+        is CustomGarmentEntity -> viewModel.deleteCustomGarment(item)
+    }
 }
 
 private fun saveImageToInternalStorage(context: android.content.Context, uri: Uri): String? {
@@ -1948,7 +1230,8 @@ private fun analyzeImage(
     scope: kotlinx.coroutines.CoroutineScope,
     categoryName: String? = null,
     customAttributes: String? = null,
-    onResult: (JSONObject, Boolean) -> Unit
+    onResult: (JSONObject, Boolean) -> Unit,
+    onRawResult: (String?) -> Unit = {}
 ) {
     scope.launch {
         try {
@@ -1959,11 +1242,10 @@ private fun analyzeImage(
                 android.graphics.BitmapFactory.decodeStream(inputStream)
             }.copy(Bitmap.Config.ARGB_8888, true)
 
-            // Extracción de color LOCAL (Offline y Gratis)
+            // Extracción de color LOCAL
             val palette = Palette.from(bitmap).generate()
             val dominantColorArgb = palette.getDominantColor(0)
             val dominantColorName = if (dominantColorArgb != 0) {
-                // Un mapeo de colores muy básico para el ejemplo
                 val hsv = FloatArray(3)
                 android.graphics.Color.colorToHSV(dominantColorArgb, hsv)
                 when {
@@ -1978,27 +1260,41 @@ private fun analyzeImage(
                 }
             } else ""
 
-            // Redimensionar para optimizar IA (Max 1024px para mayor detalle en etiquetas)
-            val scaledBitmap = if (bitmap.width > 1024 || bitmap.height > 1024) {
-                val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
-                val newWidth = if (ratio > 1) 1024 else (1024 * ratio).toInt()
-                val newHeight = if (ratio > 1) (1024 / ratio).toInt() else 1024
-                Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-            } else bitmap
-
-            val aiResult = viewModel.analyzeGarment(scaledBitmap, categoryName, customAttributes)
-            
-            if (aiResult != null && !aiResult.contains("Error")) {
-                onResult(JSONObject(aiResult), false)
+            val maxDim = 800
+            val (newW, newH) = if (bitmap.width > bitmap.height) {
+                maxDim to (maxDim * bitmap.height / bitmap.width)
             } else {
-                // Fallback Offline: Solo enviamos el color detectado localmente
-                val offlineJson = JSONObject().apply {
-                    put("color", dominantColorName)
+                (maxDim * bitmap.width / bitmap.height) to maxDim
+            }
+            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
+
+            android.util.Log.d("WardrobeScreen", "Starting AI analysis...")
+            val aiResult = viewModel.analyzeGarment(scaledBitmap, categoryName, customAttributes)
+            onRawResult(aiResult)
+            
+            if (!aiResult.isNullOrBlank() && !aiResult.contains("Error")) {
+                try {
+                    onResult(JSONObject(aiResult), false)
+                } catch (e: Exception) {
+                    android.util.Log.e("WardrobeScreen", "Error parsing AI JSON response: $aiResult", e)
+                    scope.launch(Dispatchers.Main) {
+                        Toast.makeText(context, "Respuesta IA no válida: $aiResult", Toast.LENGTH_LONG).show()
+                    }
+                    val offlineJson = JSONObject().apply { put("color", dominantColorName) }
+                    onResult(offlineJson, true)
                 }
+            } else {
+                scope.launch(Dispatchers.Main) {
+                    val errorMsg = aiResult ?: "Sin respuesta del servidor"
+                    Toast.makeText(context, "IA Error: $errorMsg", Toast.LENGTH_LONG).show()
+                }
+                val offlineJson = JSONObject().apply { put("color", dominantColorName) }
                 onResult(offlineJson, true)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("WardrobeScreen", "Error in analyzeImage: ${e.message}", e)
+            val offlineJson = JSONObject().apply { put("color", "") }
+            onResult(offlineJson, true)
         }
     }
 }

@@ -16,7 +16,7 @@ interface PantDao {
     suspend fun insertPant(pant: PantEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPants(pants: List<PantEntity>)
+    suspend fun insertPants(pants: List<PantEntity>): List<Long>
 
     // Consulta relacional de pantalones limpios
     @Query("SELECT * FROM pants WHERE user_id = :userId AND laundryState = 'CLEAN' ORDER BY code ASC")
