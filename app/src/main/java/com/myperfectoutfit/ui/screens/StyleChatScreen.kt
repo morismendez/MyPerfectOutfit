@@ -43,7 +43,7 @@ import java.io.File
 @Composable
 fun StyleChatScreen(
     viewModel: StyleChatViewModel = hiltViewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var inputText by remember { mutableStateOf("") }
@@ -51,7 +51,7 @@ fun StyleChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(value = false) }
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -87,6 +87,7 @@ fun StyleChatScreen(
         selectedImageUri = uri
         uri?.let {
             selectedBitmap = if (Build.VERSION.SDK_INT < 28) {
+                @Suppress("DEPRECATION")
                 MediaStore.Images.Media.getBitmap(context.contentResolver, it)
             } else {
                 val source = ImageDecoder.createSource(context.contentResolver, it)
@@ -102,6 +103,7 @@ fun StyleChatScreen(
             selectedImageUri = tempCameraUri
             tempCameraUri?.let {
                 selectedBitmap = if (Build.VERSION.SDK_INT < 28) {
+                    @Suppress("DEPRECATION")
                     MediaStore.Images.Media.getBitmap(context.contentResolver, it)
                 } else {
                     val source = ImageDecoder.createSource(context.contentResolver, it)
@@ -258,7 +260,7 @@ fun StyleChatScreen(
                             selectedImageUri = null
                             selectedBitmap = null
                         },
-                        enabled = (inputText.isNotBlank() || selectedImageUri != null) && !uiState.isLoading,
+                        enabled = ((inputText.isNotBlank() || selectedImageUri != null)) && !uiState.isLoading,
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar")
@@ -291,9 +293,9 @@ fun ChatBubble(message: ChatMessage) {
             tonalElevation = 1.dp
         ) {
             Column {
-                if (message.imageUri != null) {
+                message.imageUri?.let {
                     AsyncImage(
-                        model = message.imageUri,
+                        model = it,
                         contentDescription = null,
                         modifier = Modifier
                             .padding(4.dp)
@@ -390,7 +392,7 @@ fun SuggestedItemCard(item: SuitcaseItem, contentColor: Color) {
             }
             Text(
                 text = item.name,
-                style = MaterialTheme.labelExtraSmall(),
+                style = labelExtraSmall(),
                 modifier = Modifier.padding(4.dp),
                 maxLines = 2,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -401,7 +403,7 @@ fun SuggestedItemCard(item: SuitcaseItem, contentColor: Color) {
 }
 
 @Composable
-fun MaterialTheme.labelExtraSmall() = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+fun labelExtraSmall() = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
 
 @Composable
 fun TypingIndicator() {

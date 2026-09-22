@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
@@ -26,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.myperfectoutfit.ui.theme.LoraFontFamily
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -41,7 +41,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.myperfectoutfit.ui.components.ImageFramingDialog
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,7 +63,7 @@ fun MainScreen(
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
+    ) { _ ->
         // No necesitamos hacer nada especial si no se concede, 
         // simplemente no recibirá notificaciones.
     }
@@ -88,7 +87,7 @@ fun MainScreen(
                             }
                         }
                         Toast.makeText(context, "Respaldo guardado exitosamente.", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         Toast.makeText(context, "Error al guardar el archivo.", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -170,9 +169,7 @@ fun MainScreen(
             },
             onAddRule = { title, desc -> userViewModel.addStyleRule(title, desc) },
             onToggleRule = { id, active -> userViewModel.toggleStyleRule(id, active) },
-            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) },
-            onBackup = { onBackup() },
-            onRestore = { restoreLauncher.launch("application/zip") }
+            onDeleteRule = { rule -> userViewModel.deleteStyleRule(rule) }
         )
     }
 
@@ -345,16 +342,14 @@ fun EditProfileDialog(
     onSave: (name: String, email: String, photo: String?, categories: String, displayMode: com.myperfectoutfit.data.local.enums.CategoryDisplayMode) -> Unit,
     onAddRule: (String, String) -> Unit,
     onToggleRule: (Long, Boolean) -> Unit,
-    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit,
-    onBackup: () -> Unit,
-    onRestore: () -> Unit
+    onDeleteRule: (com.myperfectoutfit.data.local.entities.StyleRuleEntity) -> Unit
 ) {
     var name by remember { mutableStateOf(user.name) }
     var email by remember { mutableStateOf(user.email) }
     var displayMode by remember { mutableStateOf(user.categoryDisplayMode) }
     var showAddRuleDialog by remember { mutableStateOf(false) }
     var selectedImageUri by remember { 
-        mutableStateOf(user.profilePictureUrl?.let { Uri.parse(it) }) 
+        mutableStateOf(user.profilePictureUrl?.toUri()) 
     }
     
     val selectableCategories = com.myperfectoutfit.ui.state.CategoryFilter.entries.filter { 
@@ -368,7 +363,6 @@ fun EditProfileDialog(
     }
 
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     
@@ -379,7 +373,7 @@ fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         selectedImageUri = uri ?: selectedImageUri
-        if (uri != null) imageToFrame = uri
+        uri?.let { imageToFrame = it }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -390,17 +384,15 @@ fun EditProfileDialog(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            val tempFile = File(context.cacheDir, "profile_edit_${System.currentTimeMillis()}.jpg")
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                tempFile
-            )
-            tempCameraUri = uri
-            cameraLauncher.launch(uri)
-        }
+    ) { _ ->
+        val tempFile = File(context.cacheDir, "profile_edit_${System.currentTimeMillis()}.jpg")
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            tempFile
+        )
+        tempCameraUri = uri
+        cameraLauncher.launch(uri)
     }
 
     if (showSourceDialog) {

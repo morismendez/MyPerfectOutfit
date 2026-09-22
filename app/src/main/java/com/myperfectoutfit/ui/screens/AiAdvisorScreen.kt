@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.myperfectoutfit.ui.enums.AdvisorFeature
@@ -122,43 +121,3 @@ fun FeatureCard(feature: AdvisorFeature, onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PlaceholderFeatureScreen(feature: AdvisorFeature, onBack: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(feature.title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = feature.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(100.dp).alpha(0.3f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "${feature.title} próximamente",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Text(
-                    text = "Estamos trabajando para traerte esta función.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-    }
-}

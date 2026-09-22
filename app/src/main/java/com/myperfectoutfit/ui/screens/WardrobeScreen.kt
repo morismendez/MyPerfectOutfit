@@ -4,11 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -18,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,11 +27,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -42,14 +35,12 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.local.enums.LaundryState
-import com.myperfectoutfit.ui.components.ImageFramingDialog
 import com.myperfectoutfit.ui.state.CategoryFilter
 import com.myperfectoutfit.ui.state.WardrobeUiState
 import com.myperfectoutfit.ui.viewmodel.WardrobeViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
@@ -168,7 +159,6 @@ fun WardrobeScreen(
 
     if (showDeleteConfirm != null) {
         DeleteConfirmDialog(
-            item = showDeleteConfirm!!,
             onDismiss = { showDeleteConfirm = null },
             onConfirm = {
                 deleteItem(showDeleteConfirm!!, viewModel)
@@ -713,13 +703,10 @@ fun PrendaDialog(
                     if (aiStyle.isNotBlank()) {
                         style = aiStyle; fit = aiStyle; fitStyle = aiStyle; bagStyle = aiStyle; skirtStyle = aiStyle
                     }
-                    val customCat = selectedCustomCategory
-                    if (customCat != null) {
-                        customCat.attributeNames.split(",").forEach { attr ->
-                            val key = attr.trim()
-                            val value = getClean(key)
-                            if (value.isNotBlank()) customAttributes[key] = value
-                        }
+                    selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
+                        val key = attr.trim()
+                        val value = getClean(key)
+                        if (value.isNotBlank()) customAttributes[key] = value
                     }
                 }
             )
@@ -790,13 +777,10 @@ fun PrendaDialog(
                         if (aiStyle.isNotBlank()) {
                             style = aiStyle; fit = aiStyle; fitStyle = aiStyle; bagStyle = aiStyle; skirtStyle = aiStyle
                         }
-                        val customCat = selectedCustomCategory
-                        if (customCat != null) {
-                            customCat.attributeNames.split(",").forEach { attr ->
-                                val key = attr.trim()
-                                val value = getClean(key)
-                                if (value.isNotBlank()) customAttributes[key] = value
-                            }
+                        selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
+                            val key = attr.trim()
+                            val value = getClean(key)
+                            if (value.isNotBlank()) customAttributes[key] = value
                         }
                     }
                 )
@@ -1100,8 +1084,25 @@ fun CustomCategoryDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean
 }
 
 @Composable
-fun DeleteConfirmDialog(item: Any, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Eliminar Prenda") }, text = { Text("¿Estás seguro de que quieres eliminar esta prenda del armario? Esta acción no se puede deshacer.") }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Eliminar Prenda") },
+        text = { Text("¿Estás seguro de que quieres eliminar esta prenda del armario? Esta acción no se puede deshacer.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Eliminar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 private fun itemToMap(item: Any): Map<String, Any?> {
@@ -1250,7 +1251,7 @@ private fun analyzeImage(
                 android.graphics.Color.colorToHSV(dominantColorArgb, hsv)
                 when {
                     hsv[1] < 0.1 -> "Gris / Blanco / Negro"
-                    hsv[0] < 20 || hsv[0] > 340 -> "Rojo"
+                    hsv[0] !in 20.0f..340.0f -> "Rojo"
                     hsv[0] < 50 -> "Naranja / Café"
                     hsv[0] < 70 -> "Amarillo"
                     hsv[0] < 160 -> "Verde"

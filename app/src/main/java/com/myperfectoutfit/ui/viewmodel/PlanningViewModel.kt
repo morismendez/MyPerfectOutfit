@@ -113,7 +113,7 @@ class PlanningViewModel @Inject constructor(
                         suitcaseItemIds.contains(id)
                     }
                 }
-
+                @Suppress("UNCHECKED_CAST")
                 val garmentsMap = mapOf(
                     "SHIRTS" to filterBySuitcase(array[1] as List<ShirtEntity>),
                     "PANTS" to filterBySuitcase(array[2] as List<PantEntity>),

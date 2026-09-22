@@ -74,8 +74,7 @@ class UserViewModel @Inject constructor(
             )
         }
     }
-    
-    fun getAiApiKey(): String? = repository.getAiApiKey()
+
 
     fun addStyleRule(title: String, description: String) {
         viewModelScope.launch {

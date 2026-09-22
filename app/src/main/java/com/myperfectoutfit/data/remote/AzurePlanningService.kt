@@ -1,6 +1,5 @@
 package com.myperfectoutfit.data.remote
 
-import android.util.Log
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.myperfectoutfit.data.local.entities.*
@@ -45,6 +44,10 @@ class AzurePlanningService @Inject constructor() {
         if (pants.isNotEmpty()) inventory.append("PANTALONES: ${pants.joinToString(", ") { "ID:${it.id}(${it.brand ?: ""} ${it.primaryColor} ${it.subType})" }}\n")
         if (shoes.isNotEmpty()) inventory.append("ZAPATOS: ${shoes.joinToString(", ") { "ID:${it.id}(${it.brand} ${it.color} ${it.style})" }}\n")
         if (jackets.isNotEmpty()) inventory.append("CHAQUETAS: ${jackets.joinToString(", ") { "ID:${it.id}(${it.brand ?: ""} ${it.color} ${it.type})" }}\n")
+        if (ties.isNotEmpty()) inventory.append("CORBATAS: ${ties.joinToString(", ") { "ID:${it.id}(${it.colorRange} ${it.pattern})" }}\n")
+        if (watches.isNotEmpty()) inventory.append("RELOJES: ${watches.joinToString(", ") { "ID:${it.id}(${it.brand} ${it.model})" }}\n")
+        if (fragrances.isNotEmpty()) inventory.append("FRAGANCIAS: ${fragrances.joinToString(", ") { "ID:${it.id}(${it.brand} ${it.name})" }}\n")
+        if (bags.isNotEmpty()) inventory.append("BOLSOS: ${bags.joinToString(", ") { "ID:${it.id}(${it.brand ?: ""} ${it.color} ${it.style})" }}\n")
         if (dresses.isNotEmpty()) inventory.append("VESTIDOS: ${dresses.joinToString(", ") { "ID:${it.id}(${it.brand ?: ""} ${it.color})" }}\n")
         if (skirts.isNotEmpty()) inventory.append("FALDAS: ${skirts.joinToString(", ") { "ID:${it.id}(${it.brand ?: ""} ${it.color})" }}\n")
         if (customGarments.isNotEmpty()) inventory.append("PERSONALIZADOS: ${customGarments.joinToString(", ") { "ID:${it.id}(${it.attributeValues})" }}\n")

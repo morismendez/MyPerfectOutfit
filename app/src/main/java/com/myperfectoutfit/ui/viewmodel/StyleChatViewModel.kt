@@ -10,7 +10,7 @@ import com.myperfectoutfit.data.repository.WardrobeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.*
+import androidx.core.net.toUri
 import javax.inject.Inject
 
 data class ChatMessage(
@@ -71,7 +71,7 @@ class StyleChatViewModel @Inject constructor(
                     ChatMessage(
                         text = entity.text.split("SUGGESTED_IDS:")[0].trim(),
                         isUser = entity.isUser,
-                        imageUri = entity.imageUri?.let { android.net.Uri.parse(it) },
+                        imageUri = entity.imageUri?.toUri(),
                         suggestedItems = suggestedItems,
                         timestamp = entity.timestamp
                     )
@@ -79,7 +79,7 @@ class StyleChatViewModel @Inject constructor(
             }.collect { messages ->
                 _uiState.update { state ->
                     state.copy(
-                        messages = if (messages.isEmpty()) listOf(getWelcomeMessage()) else messages
+                        messages = messages.ifEmpty { listOf(getWelcomeMessage()) }
                     )
                 }
             }

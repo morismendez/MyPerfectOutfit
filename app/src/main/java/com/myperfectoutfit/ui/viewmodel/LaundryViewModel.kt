@@ -39,6 +39,7 @@ class LaundryViewModel @Inject constructor(
             else {
                 val activeCats = user.activeCategories.split(",")
                 
+                @Suppress("UNCHECKED_CAST")
                 combine(
                     repository.getAllShirts(user.id),
                     repository.getAllPants(user.id),

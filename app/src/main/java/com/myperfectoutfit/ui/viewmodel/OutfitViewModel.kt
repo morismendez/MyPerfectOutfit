@@ -82,7 +82,7 @@ class OutfitViewModel @Inject constructor(
                     val activeSuitcase = array[0] as? SuitcaseEntity
                     val suitcaseItemIds = activeSuitcase?.garmentIds?.split(",")?.map { it.split(":")[0] }?.toSet() ?: emptySet()
 
-                    fun <T> filterBySuitcase(items: List<T>, type: String): List<T> {
+                    fun <T> filterBySuitcase(items: List<T>): List<T> {
                         if (activeSuitcase == null) return items
                         return items.filter { item ->
                             val id = when(item) {
@@ -107,17 +107,28 @@ class OutfitViewModel @Inject constructor(
                     // is ShirtEntity -> "SHIRT_${entity.id}"
                     // is PantEntity -> "PANT_${entity.id}" (entity.id not entity.itemCode)
                     
-                    val filteredShirts = filterBySuitcase(array[1] as List<ShirtEntity>, "SHIRT")
-                    val filteredPants = filterBySuitcase(array[2] as List<PantEntity>, "PANT")
-                    val filteredShoes = filterBySuitcase(array[3] as List<ShoeEntity>, "SHOE")
-                    val filteredTies = filterBySuitcase(array[4] as List<TieEntity>, "TIE")
-                    val filteredWatches = filterBySuitcase(array[5] as List<WatchEntity>, "WATCH")
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredShirts = filterBySuitcase(array[1] as List<ShirtEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredPants = filterBySuitcase(array[2] as List<PantEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredShoes = filterBySuitcase(array[3] as List<ShoeEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredTies = filterBySuitcase(array[4] as List<TieEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredWatches = filterBySuitcase(array[5] as List<WatchEntity>)
+                    @Suppress("UNCHECKED_CAST")
                     val filteredFragrances = array[6] as List<FragranceEntity> // Fragrances usually not in suitcase
-                    val filteredJackets = filterBySuitcase(array[7] as List<JacketEntity>, "JACKET")
-                    val filteredBags = filterBySuitcase(array[8] as List<BagEntity>, "BAG")
-                    val filteredDresses = filterBySuitcase(array[9] as List<DressEntity>, "DRESS")
-                    val filteredSkirts = filterBySuitcase(array[10] as List<SkirtEntity>, "SKIRT")
-                    val filteredCustoms = filterBySuitcase(array[11] as List<CustomGarmentEntity>, "CUSTOM")
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredJackets = filterBySuitcase(array[7] as List<JacketEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredBags = filterBySuitcase(array[8] as List<BagEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredDresses = filterBySuitcase(array[9] as List<DressEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredSkirts = filterBySuitcase(array[10] as List<SkirtEntity>)
+                    @Suppress("UNCHECKED_CAST")
+                    val filteredCustoms = filterBySuitcase(array[11] as List<CustomGarmentEntity>)
 
                     val garmentsMap = mapOf(
                         "SHIRTS" to filteredShirts,
@@ -165,7 +176,7 @@ class OutfitViewModel @Inject constructor(
             val userInput = _uiState.value.userInstruction
             
             // Determinamos qué instrucción usar: la nueva del campo de texto o la anterior
-            val finalInstruction = if (userInput.isNotBlank()) userInput else _uiState.value.activeInstruction
+            val finalInstruction = userInput.ifBlank { _uiState.value.activeInstruction }
             
             // Si el usuario escribió algo nuevo y diferente, reseteamos la lista
             val shouldReset = userInput.isNotBlank() && userInput != _uiState.value.activeInstruction
@@ -182,16 +193,27 @@ class OutfitViewModel @Inject constructor(
             }
 
             val available = _uiState.value.availableGarments
+            @Suppress("UNCHECKED_CAST")
             val shirts = (available["SHIRTS"] as? List<ShirtEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val pants = (available["PANTS"] as? List<PantEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val shoes = (available["SHOES"] as? List<ShoeEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val ties = (available["TIES"] as? List<TieEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val watches = (available["WATCHES"] as? List<WatchEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val fragrances = (available["FRAGRANCES"] as? List<FragranceEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val jackets = (available["JACKETS"] as? List<JacketEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val bags = (available["BAGS"] as? List<BagEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val dresses = (available["DRESSES"] as? List<DressEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val skirts = (available["SKIRTS"] as? List<SkirtEntity>) ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val customs = (available["PERSONALIZADO"] as? List<CustomGarmentEntity>) ?: emptyList()
 
             repository.getPrimaryUser().firstOrNull()?.let { user ->

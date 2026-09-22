@@ -3,8 +3,6 @@ package com.myperfectoutfit.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -39,7 +37,7 @@ fun SuitcaseScreen(
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var currentStep by remember { mutableStateOf(1) }
+    var currentStep by remember { mutableIntStateOf(1) }
     
     var showReplaceSheet by remember { mutableStateOf(false) }
     var garmentToReplace by remember { mutableStateOf<com.myperfectoutfit.ui.viewmodel.SuitcaseItem?>(null) }
@@ -448,7 +446,7 @@ fun Step3Generation(
                     text = if (state.isCompleted) "Resumen del viaje finalizado" else "¡Maleta lista!",
                     style = MaterialTheme.typography.headlineMedium
                 )
-                Text(state.aiJustification ?: "", style = MaterialTheme.typography.bodyMedium)
+                Text(state.aiJustification, style = MaterialTheme.typography.bodyMedium)
             }
 
             if (!state.isCompleted) {
@@ -928,7 +926,7 @@ fun ReplaceGarmentSheet(
                             
                             // Prenda Nueva
                             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                if (uiState.pendingAiSuggestion?.imageUrl != null) {
+                                if (uiState.pendingAiSuggestion.imageUrl != null) {
                                     AsyncImage(
                                         model = uiState.pendingAiSuggestion.imageUrl,
                                         contentDescription = null,
@@ -936,7 +934,7 @@ fun ReplaceGarmentSheet(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-                                Text(uiState.pendingAiSuggestion?.name ?: "", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, maxLines = 1)
+                                Text(uiState.pendingAiSuggestion.name, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, maxLines = 1)
                                 Text("Propuesta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                             }
                         }

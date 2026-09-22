@@ -72,32 +72,32 @@ fun PlanningScreen(
             }
         )
         
-        AlertDialog(
+        BasicAlertDialog(
             onDismissRequest = { showAiPlanningDialog = false },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp),
-            content = {
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 6.dp,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Planificar con IA",
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        
-                        DateRangePicker(
-                            state = dateRangePickerState,
-                            modifier = Modifier.weight(1f),
-                            title = { Text("Selecciona el periodo") },
-                            headline = { Text("¿Cuándo quieres usar los outfits?") },
-                            showModeToggle = false
-                        )
-                        
-                        Row(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp)
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 6.dp,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Planificar con IA",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    DateRangePicker(
+                        state = dateRangePickerState,
+                        modifier = Modifier.weight(1f),
+                        title = { Text("Selecciona el periodo") },
+                        headline = { Text("¿Cuándo quieres usar los outfits?") },
+                        showModeToggle = false
+                    )
+                    
+                    Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
@@ -119,9 +119,8 @@ fun PlanningScreen(
                             }
                         }
                     }
-                }
             }
-        )
+        }
     }
 
     if (showAddDialog) {
@@ -427,93 +426,92 @@ fun AiReviewDialog(
 ) {
     val selectedItems = remember { mutableStateListOf<PlannedOutfitWithDetails>().apply { addAll(proposedOutfits) } }
 
-    AlertDialog(
+    BasicAlertDialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp),
-        content = {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 6.dp,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Revisar Propuesta IA",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Text(
-                        text = "Selecciona los outfits que deseas guardar en tu calendario.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(proposedOutfits) { outfit ->
-                            val isSelected = selectedItems.contains(outfit)
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { 
-                                        if (isSelected) selectedItems.remove(outfit) else selectedItems.add(outfit)
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) 
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                    else 
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                ),
-                                border = if (isSelected) 
-                                    androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                else null
+        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp)
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Revisar Propuesta IA",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Selecciona los outfits que deseas guardar en tu calendario.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(proposedOutfits) { outfit ->
+                        val isSelected = selectedItems.contains(outfit)
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    if (isSelected) selectedItems.remove(outfit) else selectedItems.add(outfit)
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) 
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ),
+                            border = if (isSelected) 
+                                androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                            else null
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = { 
-                                            if (it) selectedItems.add(outfit) else selectedItems.remove(outfit)
-                                        }
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { 
+                                        if (it) selectedItems.add(outfit) else selectedItems.remove(outfit)
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = outfit.plannedOutfit.dateString,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = outfit.plannedOutfit.dateString,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = outfit.plannedOutfit.notes ?: "",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 3
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        
-                                        // Lista Detallada de Prendas
-                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            listOfNotNull(
-                                                outfit.shirt, outfit.pant, outfit.shoe, 
-                                                outfit.jacket, outfit.dress, outfit.skirt,
-                                                outfit.tie, outfit.bag, outfit.watch, outfit.fragrance
-                                            ).forEach { item ->
-                                                val url = getGarmentImageUrl(item)
-                                                val desc = getGarmentIdentifyingDescription(item)
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    GarmentThumbnail(imageUrl = url, size = 56.dp)
-                                                    Spacer(modifier = Modifier.width(12.dp))
-                                                    Text(
-                                                        text = desc,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = outfit.plannedOutfit.notes ?: "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 3
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Lista Detallada de Prendas
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        listOfNotNull(
+                                            outfit.shirt, outfit.pant, outfit.shoe, 
+                                            outfit.jacket, outfit.dress, outfit.skirt,
+                                            outfit.tie, outfit.bag, outfit.watch, outfit.fragrance
+                                        ).forEach { item ->
+                                            val url = getGarmentImageUrl(item)
+                                            val desc = getGarmentIdentifyingDescription(item)
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                GarmentThumbnail(imageUrl = url, size = 56.dp)
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Text(
+                                                    text = desc,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
                                             }
                                         }
                                     }
@@ -521,31 +519,31 @@ fun AiReviewDialog(
                             }
                         }
                     }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${selectedItems.size} seleccionados",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Button(
+                        onClick = { onConfirm(selectedItems.toList()) },
+                        enabled = selectedItems.isNotEmpty()
                     ) {
-                        Text(
-                            text = "${selectedItems.size} seleccionados",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(end = 16.dp)
-                        )
-                        TextButton(onClick = onDismiss) {
-                            Text("Cancelar")
-                        }
-                        Button(
-                            onClick = { onConfirm(selectedItems.toList()) },
-                            enabled = selectedItems.isNotEmpty()
-                        ) {
-                            Text("Guardar Seleccionados")
-                        }
+                        Text("Guardar Seleccionados")
                     }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable

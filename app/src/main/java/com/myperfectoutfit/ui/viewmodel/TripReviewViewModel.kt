@@ -81,7 +81,7 @@ class TripReviewViewModel @Inject constructor(
                 repository.getAllWatches(suitcase.userId),
                 repository.getAllCustomGarments(suitcase.userId)
             ) { flows ->
-                flows.flatMap { if (it is List<*>) it.filterNotNull() else emptyList<Any>() }
+                flows.flatMap { it as List<*> }
             }.first()
 
             val garmentData = suitcase.garmentIds.split(",")
@@ -202,7 +202,7 @@ class TripReviewViewModel @Inject constructor(
                 repository.getAllWatches(trip.userId),
                 repository.getAllCustomGarments(trip.userId)
             ) { flows ->
-                flows.flatMap { if (it is List<*>) it.filterNotNull() else emptyList<Any>() }
+                flows.flatMap { it as List<*> }
             }.first()
 
             // Actualizar lavandería en el repositorio principal

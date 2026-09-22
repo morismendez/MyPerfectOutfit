@@ -452,11 +452,11 @@ class SuitcaseViewModel @Inject constructor(
                             fullInventory = inventory,
                             aiJustification = aiResponse.justification,
                             selectedGarments = selectedItems,
-                            missingSuggestions = aiResponse.missingSuggestions.map { SuitcaseTask(it) },
-                            essentials = aiResponse.essentials.map { SuitcaseTask(it) }
+                            missingSuggestions = aiResponse.missingSuggestions.map { name -> SuitcaseTask(name) },
+                            essentials = aiResponse.essentials.map { name -> SuitcaseTask(name) }
                         )
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     _uiState.update { it.copy(isLoading = false, errorMessage = "Error al procesar respuesta IA") }
                 }
             }
@@ -552,7 +552,7 @@ class SuitcaseViewModel @Inject constructor(
                     startDate = start,
                     endDate = end,
                     suitcaseType = SuitcaseType.valueOf(suitcase.suitcaseType),
-                    selectedStyles = if (styles.isNotEmpty()) styles else state.selectedStyles,
+                    selectedStyles = styles.ifEmpty { state.selectedStyles },
                     selectedEvents = events,
                     customEvent = customEvent,
                     aiJustification = suitcase.aiSuggestions,
@@ -583,7 +583,7 @@ class SuitcaseViewModel @Inject constructor(
                     repository.getAllWatches(suitcase.userId),
                     repository.getAllCustomGarments(suitcase.userId)
                 ) { flows ->
-                    flows.flatMap { if (it is List<*>) it.filterNotNull() else emptyList<Any>() }
+                    flows.flatMap { it as List<*> }
                 }.first()
 
                 val garmentData = suitcase.garmentIds.split(",")
