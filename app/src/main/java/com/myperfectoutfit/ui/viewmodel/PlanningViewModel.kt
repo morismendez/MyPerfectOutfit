@@ -73,9 +73,7 @@ class PlanningViewModel @Inject constructor(
     private fun loadAllGarments() {
         viewModelScope.launch {
             val userId = _uiState.value.userId
-            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }.format(Date())
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
             combine(
                 suitcaseRepository.getActiveSuitcase(userId, today),

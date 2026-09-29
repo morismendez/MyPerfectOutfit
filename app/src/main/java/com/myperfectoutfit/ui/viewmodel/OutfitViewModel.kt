@@ -61,9 +61,7 @@ class OutfitViewModel @Inject constructor(
             repository.getPrimaryUser().firstOrNull()?.let { user ->
                 val userId = user.id
                 val activeCats = user.activeCategories.split(",")
-                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
-                    timeZone = java.util.TimeZone.getTimeZone("UTC")
-                }.format(java.util.Date())
+                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
 
                 combine(
                     suitcaseRepository.getActiveSuitcase(userId, today),

@@ -55,9 +55,7 @@ class TripReviewViewModel @Inject constructor(
     }
 
     private fun checkForFinishedTrips(list: List<SuitcaseEntity>) {
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }.format(Date())
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
         val finishedTrip = list.find { !it.isCompleted && it.endDate < today }
         

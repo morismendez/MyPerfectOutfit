@@ -1,11 +1,16 @@
 package com.myperfectoutfit.ui.screens
 
-import androidx.compose.foundation.layout.*
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -13,15 +18,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.ui.viewmodel.OutfitViewModel
 import com.myperfectoutfit.ui.viewmodel.RecommendedOutfit
-import android.speech.tts.TextToSpeech
 import java.util.Locale
-import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,25 +37,62 @@ fun OutfitGeneratorScreen(
     var selectedOutfitToConfirm by remember { mutableStateOf<RecommendedOutfit?>(null) }
     var showGarmentPicker by remember { mutableStateOf(value = false) }
 
-    // Inicialización de TextToSpeech
+    var speakingOutfitId by remember { mutableStateOf<String?>(null) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    // Inicialización de TextToSpeech con listener de reproducción
     val tts = remember {
-        TextToSpeech(context) { _ ->
-            // Se asume que el idioma español está disponible
+        lateinit var textToSpeech: TextToSpeech
+        textToSpeech = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech.language = Locale("es", "ES")
+            }
         }
+        textToSpeech
     }
 
-    LaunchedEffect(Unit) {
-        tts.language = Locale("es", "ES")
-    }
+    DisposableEffect(tts) {
+        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                mainHandler.post {
+                    speakingOutfitId = utteranceId
+                }
+            }
 
-    DisposableEffect(Unit) {
+            override fun onDone(utteranceId: String?) {
+                mainHandler.post {
+                    if (speakingOutfitId == utteranceId) {
+                        speakingOutfitId = null
+                    }
+                }
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                mainHandler.post {
+                    if (speakingOutfitId == utteranceId) {
+                        speakingOutfitId = null
+                    }
+                }
+            }
+        })
+
         onDispose {
+            tts.stop()
             tts.shutdown()
         }
     }
 
-    val speak = { text: String ->
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    val toggleSpeak = { outfitId: String, text: String ->
+        if (speakingOutfitId == outfitId && tts.isSpeaking) {
+            tts.stop()
+            speakingOutfitId = null
+        } else {
+            tts.stop()
+            speakingOutfitId = outfitId
+            val params = android.os.Bundle()
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, outfitId)
+        }
     }
 
     // Diálogo para seleccionar prenda base
@@ -256,8 +297,9 @@ fun OutfitGeneratorScreen(
                     items(uiState.recommendations, key = { it.id }) { outfit ->
                         RecommendationCard(
                             outfit = outfit,
+                            isSpeaking = speakingOutfitId == outfit.id,
                             onUseToday = { selectedOutfitToConfirm = outfit },
-                            onSpeak = { speak(outfit.text) }
+                            onToggleSpeak = { toggleSpeak(outfit.id, outfit.text) }
                         )
                     }
                 }
@@ -352,8 +394,9 @@ fun GarmentSelectionDialog(
 @Composable
 fun RecommendationCard(
     outfit: RecommendedOutfit,
+    isSpeaking: Boolean,
     onUseToday: () -> Unit,
-    onSpeak: () -> Unit
+    onToggleSpeak: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -371,11 +414,11 @@ fun RecommendationCard(
                 )
                 
                 Row {
-                    IconButton(onClick = onSpeak) {
+                    IconButton(onClick = onToggleSpeak) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Escuchar recomendación",
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = if (isSpeaking) "Detener recomendación" else "Escuchar recomendación",
+                            tint = if (isSpeaking) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
                     }
                 }

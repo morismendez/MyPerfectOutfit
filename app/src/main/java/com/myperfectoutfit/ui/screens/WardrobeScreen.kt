@@ -34,7 +34,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
+import com.myperfectoutfit.data.local.enums.CategoryDisplayMode
 import com.myperfectoutfit.data.local.enums.LaundryState
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.myperfectoutfit.ui.state.CategoryFilter
 import com.myperfectoutfit.ui.state.WardrobeUiState
 import com.myperfectoutfit.ui.viewmodel.WardrobeViewModel
@@ -177,6 +179,7 @@ fun CategoryFilters(
     onDeleteCustom: (CustomCategoryEntity) -> Unit
 ) {
     val activeCategoriesNames = uiState.user?.activeCategories?.split(",") ?: emptyList()
+    val displayMode = uiState.user?.categoryDisplayMode ?: CategoryDisplayMode.BOTH
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -190,6 +193,8 @@ fun CategoryFilters(
             item {
                 CategoryChip(
                     label = CategoryFilter.ALL.displayName,
+                    icon = CategoryFilter.ALL.icon,
+                    displayMode = displayMode,
                     count = null,
                     selected = uiState.selectedCategory == CategoryFilter.ALL && uiState.selectedCustomCategoryId == null,
                     onClick = { onSelect(CategoryFilter.ALL) }
@@ -214,6 +219,8 @@ fun CategoryFilters(
                 }
                 CategoryChip(
                     label = category.displayName,
+                    icon = category.icon,
+                    displayMode = displayMode,
                     count = count,
                     selected = uiState.selectedCategory == category && uiState.selectedCustomCategoryId == null,
                     onClick = { onSelect(category) }
@@ -224,6 +231,8 @@ fun CategoryFilters(
                 val count = uiState.customGarments.count { it.categoryId == cat.id }
                 CategoryChip(
                     label = cat.name,
+                    icon = Icons.Default.Category,
+                    displayMode = displayMode,
                     count = count,
                     selected = uiState.selectedCustomCategoryId == cat.id,
                     onClick = { onSelectCustom(cat.id) },
@@ -241,6 +250,8 @@ fun CategoryFilters(
 @Composable
 fun CategoryChip(
     label: String,
+    icon: ImageVector? = null,
+    displayMode: CategoryDisplayMode = CategoryDisplayMode.BOTH,
     count: Int?,
     selected: Boolean,
     onClick: () -> Unit,
@@ -257,11 +268,25 @@ fun CategoryChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
+            val showIcon = displayMode == CategoryDisplayMode.ICON_ONLY || displayMode == CategoryDisplayMode.BOTH
+            val showText = displayMode == CategoryDisplayMode.TEXT_ONLY || displayMode == CategoryDisplayMode.BOTH || icon == null
+
+            if (showIcon && icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (showText) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
             
             if (count != null) {
                 Surface(
@@ -628,9 +653,9 @@ fun PrendaDialog(
     var showSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            selectedImageUri = uri
+    val runAiAnalysis = {
+        val uri = selectedImageUri
+        if (uri != null && !isAnalyzing) {
             isAnalyzing = true
             offlineMode = false
             val currentCat = selectedCustomCategory?.name ?: selectedCategory.displayName
@@ -640,12 +665,10 @@ fun PrendaDialog(
                     isAnalyzing = false
                     offlineMode = offline
                     
-                    // Función auxiliar para obtener strings limpios y manejar listas de la IA
                     fun getClean(key: String): String {
                         val v = json.opt(key) ?: return ""
                         if (v == JSONObject.NULL) return ""
                         
-                        // Si la IA devolvió una lista ["a", "b"], la convertimos en "A, B"
                         if (v is org.json.JSONArray) {
                             val items = mutableListOf<String>()
                             for (i in 0 until v.length()) {
@@ -713,78 +736,15 @@ fun PrendaDialog(
         }
     }
 
+    val galleryLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+        }
+    }
+
     val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
         if (success) {
-            val uri = tempCameraUri
-            selectedImageUri = uri
-            uri?.let {
-                isAnalyzing = true
-                offlineMode = false
-                val currentCat = selectedCustomCategory?.name ?: selectedCategory.displayName
-                val currentAttrs = selectedCustomCategory?.attributeNames
-                analyzeImage(it, context, viewModel, scope, currentCat, currentAttrs,
-                    onResult = { json, offline ->
-                        isAnalyzing = false
-                        offlineMode = offline
-                        
-                        fun getClean(key: String): String {
-                            val v = json.optString(key, "")
-                            return if (v == "null" || v == "None") "" else v
-                        }
-
-                        brand = getClean("brand").ifBlank { brand }
-                        name = getClean("name").ifBlank { name }
-                        val aiOccasion = getClean("occasionTag")
-                        if (aiOccasion.isNotBlank()) occasion = aiOccasion
-                        profile = getClean("profile").ifBlank { profile }
-                        model = getClean("model").ifBlank { model }
-                        dialColor = getClean("dialColor").ifBlank { dialColor }
-                        strapColor = getClean("strapColor").ifBlank { strapColor }
-                        strapMaterial = getClean("strapMaterial").ifBlank { strapMaterial }
-                        
-                        val detectedColor = getClean("primaryColor").ifBlank { getClean("color") }
-                        if (detectedColor.isNotBlank()) color = detectedColor
-                        
-                        secondaryColor = getClean("secondaryColor").ifBlank { secondaryColor }
-                        pattern = getClean("pattern").ifBlank { pattern }
-                        material = getClean("material").ifBlank { material }
-                        val aiWidth = getClean("widthCms")
-                        if (aiWidth.isNotBlank()) width = aiWidth
-                        val aiType = getClean("type")
-                        if (aiType.isNotBlank()) jacketType = aiType
-                        val aiSize = getClean("size")
-                        if (aiSize.isNotBlank()) bagSize = aiSize
-                        val aiLength = getClean("length")
-                        if (aiLength.isNotBlank()) { dressLength = aiLength; skirtLength = aiLength }
-                        val aiSleeveStyle = getClean("sleeveStyle")
-                        if (aiSleeveStyle.isNotBlank()) sleeveStyle = aiSleeveStyle
-                        val aiSubType = getClean("subType")
-                        if (aiSubType.isNotBlank()) subType = aiSubType
-                        sleeveLength = getClean("sleeveLength").ifBlank { sleeveLength }
-                        necklineStyle = getClean("necklineStyle").ifBlank { necklineStyle }
-                        formalityLevel = getClean("formalityLevel").ifBlank { formalityLevel }
-                        lengthStyle = getClean("lengthStyle").ifBlank { lengthStyle }
-                        waistRise = getClean("waistRise").ifBlank { waistRise }
-                        fitStyle = getClean("fitStyle").ifBlank { fitStyle }
-                        fit = getClean("fit").ifBlank { fit }
-                        
-                        val otherVal = getClean("other")
-                        if (otherVal.isNotBlank()) {
-                            if (necklineStyle.isBlank()) necklineStyle = otherVal
-                            if (jacketType.isBlank()) jacketType = otherVal
-                        }
-                        val aiStyle = getClean("style")
-                        if (aiStyle.isNotBlank()) {
-                            style = aiStyle; fit = aiStyle; fitStyle = aiStyle; bagStyle = aiStyle; skirtStyle = aiStyle
-                        }
-                        selectedCustomCategory?.attributeNames?.split(",")?.forEach { attr ->
-                            val key = attr.trim()
-                            val value = getClean(key)
-                            if (value.isNotBlank()) customAttributes[key] = value
-                        }
-                    }
-                )
-            }
+            selectedImageUri = tempCameraUri
         }
     }
 
@@ -845,32 +805,104 @@ fun PrendaDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
+                            .height(180.dp)
                             .clip(MaterialTheme.shapes.medium),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
-                        AsyncImage(
-                            model = selectedImageUri,
-                            contentDescription = "Prenda seleccionada",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = "Prenda seleccionada",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
 
-                Button(onClick = { showSourceDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                    if (isAnalyzing) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            // Botón sutil arriba a la derecha para cambiar foto
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                shadowElevation = 2.dp,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { showSourceDialog = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Cambiar Foto",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
+                            // Botón flotante compacto abajo a la derecha para analizar con IA
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
+                                shadowElevation = 3.dp,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                            ) {
+                                TextButton(
+                                    onClick = { runAiAnalysis() },
+                                    enabled = !isAnalyzing,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                                ) {
+                                    if (isAnalyzing) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            "Analizando...",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(15.dp),
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            "Analizar con IA",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { showSourceDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("IA Analizando...")
-                    } else {
-                        Text(if (selectedImageUri != null) "Imagen Seleccionada" else "Seleccionar Foto")
+                        Text("Seleccionar Foto", style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 
                 if (isAnalyzing) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text("Detectando prenda, marca y color...", style = MaterialTheme.typography.labelSmall)
+                    Text("Analizando prenda, marca y detalles con IA...", style = MaterialTheme.typography.labelSmall)
                 }
 
                 if (offlineMode) {
@@ -1032,16 +1064,8 @@ fun PrendaDialog(
                     }
                     onSave(data)
                 },
-                enabled = if (selectedCustomCategory != null) {
-                    selectedImageUri != null && customAttributes.values.all { it.isNotBlank() }
-                } else {
-                    when(selectedCategory) {
-                        CategoryFilter.ALL, CategoryFilter.LAUNDRY -> false
-                        CategoryFilter.TIES -> color.isNotEmpty()
-                        CategoryFilter.FRAGRANCES -> brand.isNotEmpty() && name.isNotEmpty()
-                        else -> brand.isNotEmpty()
-                    }
-                }
+                enabled = (selectedImageUri != null) &&
+                    (selectedCustomCategory != null || (selectedCategory != CategoryFilter.ALL && selectedCategory != CategoryFilter.LAUNDRY))
             ) { Text("Guardar") }
         },
         dismissButton = {
@@ -1261,7 +1285,7 @@ private fun analyzeImage(
                 }
             } else ""
 
-            val maxDim = 800
+            val maxDim = 1280
             val (newW, newH) = if (bitmap.width > bitmap.height) {
                 maxDim to (maxDim * bitmap.height / bitmap.width)
             } else {
@@ -1269,8 +1293,14 @@ private fun analyzeImage(
             }
             val scaledBitmap = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
 
-            android.util.Log.d("WardrobeScreen", "Starting AI analysis...")
-            val aiResult = viewModel.analyzeGarment(scaledBitmap, categoryName, customAttributes)
+            val aiResult = try {
+                android.util.Log.d("WardrobeScreen", "Starting AI analysis...")
+                viewModel.analyzeGarment(scaledBitmap, categoryName, customAttributes)
+            } finally {
+                if (scaledBitmap != bitmap) {
+                    scaledBitmap.recycle()
+                }
+            }
             onRawResult(aiResult)
             
             if (!aiResult.isNullOrBlank() && !aiResult.contains("Error")) {

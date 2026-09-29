@@ -153,12 +153,13 @@ class AzureOutfitService @Inject constructor() {
             ${expertContext.instructions}
             
             REGLAS:
-            1. IGNORA EL FONDO: Solo analiza la prenda principal.
-            2. FORMATO: Devuelve SOLO un objeto JSON puro. Sin explicaciones.
-            3. IDIOMA: Responde en $languageName.
+            1. IGNORA EL FONDO: Solo analiza la prenda o articulo principal.
+            2. OBJETIVIDAD: Si un atributo no es visible con claridad en la imagen, asigna un valor vacío (""). NO inventes ni asumas datos no visibles
+            3. FORMATO: Devuelve SOLO un objeto JSON puro. Sin explicaciones.
+            4. IDIOMA: Responde en $languageName.
         """.trimIndent()
 
-        val userPromptText = "Inspecciona este artículo y rellena los campos: $fields."
+        val userPromptText = "Analiza detenidamente la imagen adjunta y rellena los campos: $fields."
 
         val data = mapOf(
             "systemInstruction" to systemInstruction,
@@ -200,37 +201,40 @@ class AzureOutfitService @Inject constructor() {
         
         return when {
             normalized.contains("camisa") || normalized.contains("top") -> ExpertContext(
-                "Sastre Experto",
-                "Mira el interior del cuello para la marca (Covington es muy probable). El color es Amarillo/Crema, ignora el ladrillo."
+                "Sastre y Estilista Experto",
+                "1. MARCA: Inspecciona el interior del cuello, estampado o etiquetas visibles. " +
+                        "2. COLOR: Distingue el 'primaryColor' dominante y el 'secondaryColor' (si aplica). " +
+                        "3. TIPO Y MANGA: Clasifica 'subType' (Camisa, Polo, Camiseta, Blusa, Top) y 'sleeveLength' (Manga larga, Manga corta, Sin mangas, 3/4). " +
+                        "4. CUELLO Y MATERIAL:Identifica 'necklineStyle' (Camisero, Cuello redondo, Cuello V, Polo, Mao) y 'material' (Algodón, Lino, Seda, Sintético)."
             )
-            normalized.contains("reloj") -> ExpertContext("Relojero", "Lee marca y modelo en la esfera.")
+            normalized.contains("reloj") -> ExpertContext("Relojero Experto", "1. MARCA Y MODELO: Lee con precisión la marca y modelo impresos en la esfera o bisel. 2. MATERIAL Y COLOR: Describe el material de la caja y el color/material de la correa ('strapColor', 'strapMaterial').")
             normalized.contains("fragancia") || normalized.contains("perfume") -> ExpertContext(
                 "Especialista en Perfumería",
-                "1. FRASCO: Identifica 'brand' y 'name' (ej: Hugo Red). 2. SÉ BREVE: Sin descripciones del envase. 3. FORMATO: Sin listas, solo texto separado por comas."
+                "1. FRASCO Y EMPAQUE: Identifica la marca ('brand') y el nombre exacto de la fragancia ('name') impresos en el frasco o caja. 2. PERFIL Y OCASIÓN: Estima el 'profile' olfativo (Fresco, Amaderado, Cítrico, Dulce, Oriental) y la 'occasionTag' (Diario, Noche, Formal)."
             )
             normalized.contains("pantalón") || normalized.contains("pantalon") || normalized.contains("inferior") -> ExpertContext(
                 "Estilista de Moda",
-                "1. TIPO: Determina si es 'subType' (Jeans, Chinos, Cargo, etc.). 2. CORTE: Identifica 'fitStyle' (Slim, Recto, etc.). 3. CINTURA: Determina 'waistRise' (Bajo, Medio, Alto). 4. MARCA: Busca etiquetas en la cintura o bolsillo trasero."
+                "1. TIPO: Determina si es 'subType' (Jeans, Chinos, Cargo, etc.). 2. CORTE: Identifica 'fitStyle' (Slim, Recto, etc.). 3. CINTURA: Determina 'waistRise' (Bajo, Medio, Alto, etc). 4. MARCA: Busca etiquetas, logos, parches o grabados."
             )
             normalized.contains("calzado") || normalized.contains("zapato") || normalized.contains("tenis") -> ExpertContext(
                 "Experto en Calzado",
-                "1. ESTILO: Identifica 'subType' (Tenis, Oxford, Bota) y 'style' (Loafer, Derby). 2. CIERRE: Nota el 'closureType' (Cordones, Hebilla). 3. PUNTERA: Mira 'toeStyle' (Redonda, Cuadrada)."
+                "1. TIPO Y ESTILO: Determina 'subType' (Tenis, Zapatos de vestir, Botas, Sandalias, etc) y 'style' (Oxford, Derby, Loafer, Sneaker, Chelsea, etc). 2. CIERRE: Nota el 'closureType' (Cordones, Hebilla, slip-on, etc). 3. PUNTERA: Mira 'toeStyle' (Puntera lisa, Cap Toe, Redonda, etc) y 'material' (Cuero, Gamuza, Tela, etc)."
             )
             normalized.contains("chaqueta") || normalized.contains("abrigo") -> ExpertContext(
                 "Especialista en Prendas de Exterior",
-                "1. TIPO: Clasifica en 'type' (Blazer, Bomber, Parka). 2. CIERRE: Identifica 'closureType' (Botones, Cremallera). 3. COLOR: Enfócate solo en la prenda principal."
+                "1. TIPO: Clasifica en 'type' (Blazer, Bomber, Parka, etc). 2. CIERRE: Identifica 'closureType' (Botones, Cremallera, etc). 3. COLOR: Enfócate solo en la prenda principal."
             )
             normalized.contains("corbata") -> ExpertContext(
                 "Consultor de Imagen",
-                "1. DISEÑO: Identifica 'pattern' (Liso, Lunares, Rayas). 2. COLOR: Define 'colorRange'. 3. ANCHO: Estima 'widthCms' (ej: 7.5)."
+                "1. DISEÑO: Identifica 'pattern' (Liso, Lunares, Rayas, etc). 2. COLOR: Define 'colorRange'. 3. ANCHO: Estima 'widthCms' (ej: 7.5)."
             )
             normalized.contains("bolso") || normalized.contains("cartera") -> ExpertContext(
                 "Experto en Marroquinería",
-                "1. ESTILO: Determina 'style' (Tote, Clutch, Mochila). 2. TAMAÑO: Estima 'size' (Pequeño, Mediano, Grande)."
+                "1. ESTILO: Determina 'style' (Tote, Clutch, Mochila, etc). 2. TAMAÑO: Estima 'size' (Pequeño, Mediano, Grande, etc)."
             )
             normalized.contains("vestido") || normalized.contains("falda") -> ExpertContext(
                 "Estilista Femenino",
-                "1. CORTE: Determina 'style' (Plisada, Lápiz) y 'length' (Mini, Midi, Maxi). 2. MANGA: Si es vestido, identifica 'sleeveStyle'."
+                "1. CORTE: Determina 'style' (Plisada, Lápiz, A-line, etc) y 'length' (Mini, Midi, Maxi, etc). 2. MANGA: Si es vestido, identifica 'sleeveStyle'."
             )
             else -> ExpertContext(
                 "Especialista en ${category ?: "Moda"}",
@@ -269,7 +273,7 @@ class AzureOutfitService @Inject constructor() {
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
-        val maxDim = 800
+        val maxDim = 1280
         val (newW, newH) = if (bitmap.width > bitmap.height) {
             maxDim to (maxDim * bitmap.height / bitmap.width)
         } else {
@@ -277,7 +281,11 @@ class AzureOutfitService @Inject constructor() {
         }
         val resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
         val out = ByteArrayOutputStream()
-        resized.compress(Bitmap.CompressFormat.JPEG, 70, out)
-        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        resized.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        if (resized != bitmap) {
+            resized.recycle()
+        }
+        return base64
     }
 }
