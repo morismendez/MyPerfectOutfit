@@ -12,8 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import com.myperfectoutfit.ui.enums.AdvisorFeature
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,10 +35,10 @@ fun AiAdvisorScreen() {
                 Scaffold(
                     topBar = {
                         TopAppBar(
-                            title = { Text(AdvisorFeature.DAILY_OUTFIT.title) },
+                            title = { Text(stringResource(AdvisorFeature.DAILY_OUTFIT.titleRes)) },
                             navigationIcon = {
                                 IconButton(onClick = { selectedFeature = null }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                                 }
                             }
                         )
@@ -63,7 +65,7 @@ fun AdvisorMenu(onFeatureSelected: (AdvisorFeature) -> Unit) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Asesor de Moda IA",
+            text = stringResource(R.string.advisor_menu_title),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp)
         )
@@ -106,13 +108,13 @@ fun FeatureCard(feature: AdvisorFeature, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = feature.title,
+                text = stringResource(feature.titleRes),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = feature.description,
+                text = stringResource(feature.descriptionRes),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 maxLines = 3
@@ -120,4 +122,3 @@ fun FeatureCard(feature: AdvisorFeature, onClick: () -> Unit) {
         }
     }
 }
-

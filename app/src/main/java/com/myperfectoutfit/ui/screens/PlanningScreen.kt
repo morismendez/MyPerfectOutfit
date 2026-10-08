@@ -13,7 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.dao.PlannedOutfitWithDetails
@@ -30,7 +32,9 @@ fun PlanningScreen(
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val sdfDisplay = SimpleDateFormat("EEEE, d 'de' MMMM", Locale.getDefault())
+    val locale = Locale.getDefault()
+    val pattern = if (locale.language == "es") "EEEE, d 'de' MMMM" else "EEEE, MMMM d"
+    val sdfDisplay = SimpleDateFormat(pattern, locale)
     val sdfDb = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     var showAddDialog by remember { mutableStateOf(false) }
@@ -84,7 +88,7 @@ fun PlanningScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Planificar con IA",
+                        text = stringResource(R.string.plan_ai_title),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -92,8 +96,8 @@ fun PlanningScreen(
                     DateRangePicker(
                         state = dateRangePickerState,
                         modifier = Modifier.weight(1f),
-                        title = { Text("Selecciona el periodo") },
-                        headline = { Text("¿Cuándo quieres usar los outfits?") },
+                        title = { Text(stringResource(R.string.select_period_title)) },
+                        headline = { Text(stringResource(R.string.when_use_outfits_prompt)) },
                         showModeToggle = false
                     )
                     
@@ -102,7 +106,7 @@ fun PlanningScreen(
                             horizontalArrangement = Arrangement.End
                         ) {
                             TextButton(onClick = { showAiPlanningDialog = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                             Button(
                                 onClick = {
@@ -115,7 +119,7 @@ fun PlanningScreen(
                                 },
                                 enabled = dateRangePickerState.selectedEndDateMillis != null
                             ) {
-                                Text("Generar")
+                                Text(stringResource(R.string.btn_generate))
                             }
                         }
                     }
@@ -176,16 +180,16 @@ fun PlanningScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Planificador") },
+                title = { Text(stringResource(R.string.planner_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                     }
                 },
                 actions = {
                     if (!isPastDate) {
                         IconButton(onClick = { showAiPlanningDialog = true }) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = "Planificar con IA", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.plan_ai_title), tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -194,7 +198,7 @@ fun PlanningScreen(
         floatingActionButton = {
             if (!isPastDate) {
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Planear Outfit")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.plan_future_outfit))
                 }
             }
         }
@@ -212,7 +216,7 @@ fun PlanningScreen(
                         Icon(Icons.Default.FlightTakeoff, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Modo Viaje Activo: Sugerencias basadas en tu maleta para '${uiState.activeTripName}'",
+                            text = stringResource(R.string.active_trip_mode, uiState.activeTripName ?: ""),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -224,8 +228,8 @@ fun PlanningScreen(
             OutlinedTextField(
                 value = uiState.userInstruction,
                 onValueChange = { viewModel.onInstructionChanged(it) },
-                label = { Text("Instrucción para la IA (Opcional)") },
-                placeholder = { Text("Ej: Outfits formales para esta semana...") },
+                label = { Text(stringResource(R.string.ai_instruction_label)) },
+                placeholder = { Text(stringResource(R.string.ai_instruction_placeholder)) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 trailingIcon = {
                     if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -238,14 +242,14 @@ fun PlanningScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { viewModel.moveDate(-1) }) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Anterior")
+                    Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.btn_previous))
                 }
                 Text(
                     text = sdfDisplay.format(uiState.selectedDate.time),
                     style = MaterialTheme.typography.titleMedium
                 )
                 IconButton(onClick = { viewModel.moveDate(1) }) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Siguiente")
+                    Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.btn_next))
                 }
             }
 
@@ -260,7 +264,7 @@ fun PlanningScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("Sin outfits planeados", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                                Text(stringResource(R.string.no_planned_outfits), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
                             }
                         }
                     }
@@ -303,7 +307,7 @@ fun PlanningCard(
             ) {
                 Text(text = outfit.plannedOutfit.dateString, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.btn_delete), tint = MaterialTheme.colorScheme.error)
                 }
             }
             
@@ -361,7 +365,7 @@ fun PlanningCard(
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Usar Outfit Hoy")
+                    Text(stringResource(R.string.confirm_use_today))
                 }
             }
         }
@@ -400,20 +404,21 @@ private fun getGarmentImageUrl(item: Any?): String {
     }
 }
 
+@Composable
 private fun getGarmentIdentifyingDescription(item: Any?): String {
     return when(item) {
         is ShirtEntity -> "${item.subType} ${item.primaryColor} - ${item.brand}"
         is PantEntity -> "${item.subType} ${item.primaryColor} - ${item.brand ?: "S/M"}"
         is ShoeEntity -> "${item.subType} ${item.color} - ${item.brand}"
         is JacketEntity -> "${item.type} ${item.color} - ${item.brand ?: "S/M"}"
-        is DressEntity -> "Vestido ${item.color} - ${item.brand ?: "S/M"}"
-        is SkirtEntity -> "Falda ${item.color} - ${item.brand ?: "S/M"}"
-        is WatchEntity -> "Reloj ${item.brand} ${item.model}"
-        is FragranceEntity -> "Fragancia ${item.brand} ${item.name}"
-        is BagEntity -> "Bolso ${item.color} - ${item.brand ?: "S/M"}"
-        is TieEntity -> "Corbata ${item.colorRange} ${item.pattern}"
-        is CustomGarmentEntity -> "Prenda Personalizada"
-        else -> "Prenda"
+        is DressEntity -> "${stringResource(R.string.cat_dresses)} ${item.color} - ${item.brand ?: "S/M"}"
+        is SkirtEntity -> "${stringResource(R.string.cat_skirts)} ${item.color} - ${item.brand ?: "S/M"}"
+        is WatchEntity -> "${stringResource(R.string.cat_watches)} ${item.brand} ${item.model}"
+        is FragranceEntity -> "${stringResource(R.string.cat_fragrances)} ${item.brand} ${item.name}"
+        is BagEntity -> "${stringResource(R.string.cat_bags)} ${item.color} - ${item.brand ?: "S/M"}"
+        is TieEntity -> "${stringResource(R.string.cat_ties)} ${item.colorRange} ${item.pattern}"
+        is CustomGarmentEntity -> stringResource(R.string.custom_garment_label)
+        else -> stringResource(R.string.garment_label)
     }
 }
 
@@ -438,12 +443,12 @@ fun AiReviewDialog(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Revisar Propuesta IA",
+                    text = stringResource(R.string.review_proposal_title),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "Selecciona los outfits que deseas guardar en tu calendario.",
+                    text = stringResource(R.string.review_proposal_sub),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -527,18 +532,18 @@ fun AiReviewDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "${selectedItems.size} seleccionados",
+                        text = stringResource(R.string.selected_count, selectedItems.size),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.btn_cancel))
                     }
                     Button(
                         onClick = { onConfirm(selectedItems.toList()) },
                         enabled = selectedItems.isNotEmpty()
                     ) {
-                        Text("Guardar Seleccionados")
+                        Text(stringResource(R.string.save_selected_btn))
                     }
                 }
             }
@@ -557,7 +562,7 @@ fun PlanningGarmentSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isToday) "Seleccionar Outfit para Hoy" else "Planear Outfit Futuro") },
+        title = { Text(if (isToday) stringResource(R.string.select_today_outfit) else stringResource(R.string.plan_future_outfit)) },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
@@ -566,7 +571,11 @@ fun PlanningGarmentSelectionDialog(
                 availableGarments.forEach { (category, garments) ->
                     if (garments.isNotEmpty()) {
                         item {
-                            Text(text = category, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                text = if (category == "CUSTOM" || category == "PERSONALIZADO") category else stringResource(com.myperfectoutfit.ui.state.getCategoryStringRes(category)),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                         items(garments) { garment ->
                             val isSelected = selectedGarments.contains(garment)

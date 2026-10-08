@@ -17,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -43,9 +45,11 @@ fun SuitcaseScreen(
     var garmentToReplace by remember { mutableStateOf<com.myperfectoutfit.ui.viewmodel.SuitcaseItem?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
-            snackbarHostState.showSnackbar("Maleta guardada correctamente")
+            snackbarHostState.showSnackbar(context.getString(R.string.suitcase_saved_success))
             viewModel.clearForm()
             currentStep = 1
             viewModel.resetSaveStatus()
@@ -68,10 +72,10 @@ fun SuitcaseScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Maleta IA") },
+                title = { Text(stringResource(R.string.suitcase_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = { if (currentStep > 1) currentStep-- else onBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                     }
                 }
             )
@@ -129,8 +133,8 @@ fun Step1BasicParams(
     if (suitcaseToDelete != null) {
         AlertDialog(
             onDismissRequest = { suitcaseToDelete = null },
-            title = { Text("Eliminar Plan") },
-            text = { Text("¿Estás seguro de que quieres eliminar el plan '${suitcaseToDelete!!.tripName}'? Esta acción no se puede deshacer.") },
+            title = { Text(stringResource(R.string.delete_plan_title)) },
+            text = { Text(stringResource(R.string.delete_plan_confirm, suitcaseToDelete!!.tripName)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -139,12 +143,12 @@ fun Step1BasicParams(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Eliminar")
+                    Text(stringResource(R.string.btn_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { suitcaseToDelete = null }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -181,7 +185,7 @@ fun Step1BasicParams(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (state.suitcases.isNotEmpty()) {
             item {
-                Text("Planes guardados", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.saved_plans_title), style = MaterialTheme.typography.titleMedium)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
@@ -221,7 +225,7 @@ fun Step1BasicParams(
                                 ) {
                                     Icon(
                                         Icons.Default.Close, 
-                                        contentDescription = "Eliminar",
+                                        contentDescription = stringResource(R.string.btn_delete),
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                                     )
@@ -235,15 +239,15 @@ fun Step1BasicParams(
         }
 
         item {
-            Text("Paso 1: ¿A dónde vas?", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.step1_title), style = MaterialTheme.typography.titleLarge)
         }
         item {
             OutlinedTextField(
                 value = state.tripName,
                 onValueChange = { viewModel.updateTripDetails(it, state.startDate, state.endDate) },
-                label = { Text("Nombre del viaje / Destino") },
+                label = { Text(stringResource(R.string.trip_name_label)) },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Ej: Negocios en Madrid") }
+                placeholder = { Text(stringResource(R.string.trip_name_placeholder)) }
             )
         }
         item {
@@ -270,7 +274,7 @@ fun Step1BasicParams(
                             timeZone = TimeZone.getTimeZone("UTC")
                         }
                         "${sdf.format(Date(state.startDate))} - ${sdf.format(Date(state.endDate))}"
-                    } else "Seleccionar fechas"
+                    } else stringResource(R.string.select_dates)
                     Text(
                         dateText,
                         color = if (state.dateOverlapWarning != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -288,13 +292,13 @@ fun Step1BasicParams(
             }
         }
         item {
-            Text("Tipo de equipaje", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.luggage_type_label), style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SuitcaseType.entries.forEach { type ->
                     FilterChip(
                         selected = state.suitcaseType == type,
                         onClick = { viewModel.updateSuitcaseType(type) },
-                        label = { Text(type.title) },
+                        label = { Text(stringResource(type.titleRes)) },
                         leadingIcon = { Icon(type.icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.weight(1f)
                     )
@@ -307,7 +311,7 @@ fun Step1BasicParams(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 enabled = state.tripName.isNotBlank() && state.startDate != null
             ) {
-                Text("Siguiente")
+                Text(stringResource(R.string.btn_next))
             }
         }
     }
@@ -324,10 +328,10 @@ fun Step2ContextAndStyle(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Paso 2: Estilo y Actividades", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.step2_title), style = MaterialTheme.typography.titleLarge)
         }
         item {
-            Text("¿Cuál es el estilo predominante del viaje?", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.trip_style_prompt), style = MaterialTheme.typography.titleMedium)
         }
         
         item {
@@ -356,7 +360,7 @@ fun Step2ContextAndStyle(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = style.title,
+                                        text = stringResource(style.titleRes),
                                         style = MaterialTheme.typography.labelMedium,
                                         textAlign = TextAlign.Center,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -370,7 +374,7 @@ fun Step2ContextAndStyle(
         }
 
         item {
-            Text("¿Algún evento especial?", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.special_event_prompt), style = MaterialTheme.typography.titleMedium)
         }
 
         items(SpecialEvent.entries) { event ->
@@ -391,7 +395,7 @@ fun Step2ContextAndStyle(
                             checked = isSelected,
                             onCheckedChange = { viewModel.toggleSpecialEvent(event) }
                         )
-                        Text(text = event.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = stringResource(event.titleRes), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
                 
@@ -402,8 +406,8 @@ fun Step2ContextAndStyle(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 48.dp, end = 16.dp, bottom = 8.dp),
-                        label = { Text("¿Qué evento?") },
-                        placeholder = { Text("Ej: Concierto, Boda, etc.") },
+                        label = { Text(stringResource(R.string.what_event_label)) },
+                        placeholder = { Text(stringResource(R.string.event_placeholder)) },
                         singleLine = true
                     )
                 }
@@ -415,7 +419,7 @@ fun Step2ContextAndStyle(
                 onClick = onNext,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
             ) {
-                Text("Siguiente")
+                Text(stringResource(R.string.btn_next))
             }
         }
     }
@@ -432,7 +436,7 @@ fun Step3Generation(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Estamos armando tu maleta...")
+                Text(stringResource(R.string.packing_suitcase_loading))
             }
         }
     } else if (state.aiJustification != null) {
@@ -443,7 +447,7 @@ fun Step3Generation(
         ) {
             item {
                 Text(
-                    text = if (state.isCompleted) "Resumen del viaje finalizado" else "¡Maleta lista!",
+                    text = if (state.isCompleted) stringResource(R.string.completed_trip_summary) else stringResource(R.string.suitcase_ready_title),
                     style = MaterialTheme.typography.headlineMedium
                 )
                 Text(state.aiJustification, style = MaterialTheme.typography.bodyMedium)
@@ -457,7 +461,7 @@ fun Step3Generation(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "De tu armario",
+                            stringResource(R.string.from_your_wardrobe),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -473,14 +477,14 @@ fun Step3Generation(
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (state.isPackingMode) "Modo Edición" else "Armar Maleta")
+                            Text(if (state.isPackingMode) stringResource(R.string.edit_mode) else stringResource(R.string.pack_suitcase))
                         }
                     }
                 }
             } else {
                 item {
                     Text(
-                        "Prendas utilizadas",
+                        stringResource(R.string.used_garments),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -551,7 +555,7 @@ fun Step3Generation(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            "En lavandería",
+                                            stringResource(R.string.in_laundry),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.error
                                         )
@@ -563,7 +567,7 @@ fun Step3Generation(
                                 IconButton(onClick = { onChangeGarment(garment) }) {
                                     Icon(
                                         Icons.Default.SwapHoriz,
-                                        contentDescription = "Cambiar",
+                                        contentDescription = stringResource(R.string.change_btn),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -581,7 +585,7 @@ fun Step3Generation(
 
             if (state.missingSuggestions.isNotEmpty()) {
                 item {
-                    Text("Te sugerimos conseguir", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.suggest_buying), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
                 }
                 items(state.missingSuggestions) { suggestion ->
                     Card(
@@ -619,7 +623,7 @@ fun Step3Generation(
 
             if (state.essentials.isNotEmpty()) {
                 item {
-                    Text("No olvides lo básico", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
+                    Text(stringResource(R.string.dont_forget_essentials), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
                 }
                 item {
                     Card(
@@ -668,7 +672,7 @@ fun Step3Generation(
                             onClick = { viewModel.generateSuitcase() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Regenerar")
+                            Text(stringResource(R.string.regenerate_btn))
                         }
                         OutlinedButton(
                             onClick = { viewModel.saveSuitcase() },
@@ -676,7 +680,7 @@ fun Step3Generation(
                         ) {
                             Icon(Icons.Default.Save, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Guardar")
+                            Text(stringResource(R.string.btn_save))
                         }
                     }
                 }
@@ -693,7 +697,7 @@ fun Step3Generation(
                         ) {
                             Icon(Icons.Default.TaskAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Este viaje ya ha concluido y ha sido procesado.", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.trip_concluded_msg), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -715,12 +719,12 @@ fun Step3Generation(
             }
             item {
                 Text(
-                    text = "¿Todo listo?",
+                    text = stringResource(R.string.all_set_prompt),
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Revisa los detalles antes de que la IA genere tu maleta perfecta.",
+                    text = stringResource(R.string.review_details_sub),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -741,7 +745,7 @@ fun Step3Generation(
                     ) {
                         SummaryRow(
                             icon = Icons.Default.Place,
-                            label = "Destino",
+                            label = stringResource(R.string.destination_label),
                             value = state.tripName
                         )
 
@@ -750,11 +754,11 @@ fun Step3Generation(
                         }
                         val dateRange = if (state.startDate != null && state.endDate != null) {
                             "${sdf.format(Date(state.startDate))} - ${sdf.format(Date(state.endDate))}"
-                        } else "Fechas no definidas"
+                        } else stringResource(R.string.dates_not_set)
                         
                         SummaryRow(
                             icon = Icons.Default.DateRange,
-                            label = "Periodo",
+                            label = stringResource(R.string.period_label),
                             value = dateRange
                         )
                         
@@ -780,19 +784,19 @@ fun Step3Generation(
 
                         SummaryRow(
                             icon = state.suitcaseType.icon,
-                            label = "Tipo de Equipaje",
-                            value = state.suitcaseType.title
+                            label = stringResource(R.string.luggage_type_label),
+                            value = stringResource(state.suitcaseType.titleRes)
                         )
 
                         SummaryRow(
                             icon = Icons.Default.Style,
-                            label = "Estilos Seleccionados",
-                            value = state.selectedStyles.joinToString { it.title }
+                            label = stringResource(R.string.selected_styles_label),
+                            value = state.selectedStyles.map { stringResource(it.titleRes) }.joinToString()
                         )
 
                         val events = state.selectedEvents
                             .filter { it != SpecialEvent.OTHER }
-                            .map { it.title }
+                            .map { stringResource(it.titleRes) }
                             .toMutableList()
                         
                         if (state.selectedEvents.contains(SpecialEvent.OTHER) && state.customEvent.isNotBlank()) {
@@ -802,7 +806,7 @@ fun Step3Generation(
                         if (events.isNotEmpty()) {
                             SummaryRow(
                                 icon = Icons.Default.Celebration,
-                                label = "Eventos Especiales",
+                                label = stringResource(R.string.special_events_label),
                                 value = events.joinToString(", ")
                             )
                         }
@@ -818,7 +822,7 @@ fun Step3Generation(
                     ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Generar Maleta IA")
+                        Text(stringResource(R.string.generate_suitcase_btn))
                     }
                     
                     OutlinedButton(
@@ -827,7 +831,7 @@ fun Step3Generation(
                     ) {
                         Icon(Icons.Default.Save, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Guardar Plan de Viaje")
+                        Text(stringResource(R.string.save_trip_plan_btn))
                     }
                 }
             }
@@ -844,7 +848,7 @@ fun ReplaceGarmentSheet(
     onDismiss: () -> Unit,
     onSelect: (com.myperfectoutfit.ui.viewmodel.SuitcaseItem) -> Unit
 ) {
-    val alternatives = remember(garment.category, garment.id) { 
+    val alternatives = remember(garment.category, garment.id, uiState.fullInventory, uiState.selectedGarments) { 
         viewModel.getAlternativesFor(garment.category, garment.id) 
     }
     
@@ -858,7 +862,7 @@ fun ReplaceGarmentSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Cambiar por otra opción",
+                text = stringResource(R.string.change_garment_title),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(16.dp)
             )
@@ -885,7 +889,7 @@ fun ReplaceGarmentSheet(
                     } else {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Que la IA elija por mí")
+                        Text(stringResource(R.string.ai_choose_for_me))
                     }
                 }
             } else {
@@ -903,7 +907,7 @@ fun ReplaceGarmentSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Propuesta de la IA", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.ai_proposal_title), style = MaterialTheme.typography.titleMedium)
                         }
                         
                         Spacer(modifier = Modifier.height(12.dp))
@@ -919,7 +923,7 @@ fun ReplaceGarmentSheet(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-                                Text("Actual", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.current_label), style = MaterialTheme.typography.labelSmall)
                             }
                             
                             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.padding(horizontal = 8.dp))
@@ -935,7 +939,7 @@ fun ReplaceGarmentSheet(
                                     )
                                 }
                                 Text(uiState.pendingAiSuggestion.name, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, maxLines = 1)
-                                Text("Propuesta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text(stringResource(R.string.proposal_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
                         
@@ -951,7 +955,7 @@ fun ReplaceGarmentSheet(
                                 onClick = { viewModel.clearAiSuggestion() },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Descartar")
+                                Text(stringResource(R.string.discard_btn))
                             }
                             Button(
                                 onClick = { 
@@ -960,7 +964,7 @@ fun ReplaceGarmentSheet(
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Aceptar")
+                                Text(stringResource(R.string.btn_accept))
                             }
                         }
                     }
@@ -971,7 +975,7 @@ fun ReplaceGarmentSheet(
             
             if (alternatives.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No hay otras prendas en esta categoría.")
+                    Text(stringResource(R.string.no_other_garments_in_category))
                 }
             } else {
                 LazyColumn(
@@ -1002,11 +1006,11 @@ fun ReplaceGarmentSheet(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.bodyMedium)
                                     if (item.isDirty) {
-                                        Text("En lavandería", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        Text(stringResource(R.string.in_laundry), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                                     }
                                 }
                                 if (isCurrent) {
-                                    Text("Seleccionado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    Text(stringResource(R.string.selected_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }

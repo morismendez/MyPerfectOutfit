@@ -4,11 +4,13 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -19,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.entities.*
@@ -45,7 +49,11 @@ fun OutfitGeneratorScreen(
         lateinit var textToSpeech: TextToSpeech
         textToSpeech = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                textToSpeech.language = Locale("es", "ES")
+                val deviceLocale = Locale.getDefault()
+                val result = textToSpeech.setLanguage(deviceLocale)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    textToSpeech.language = Locale.US
+                }
             }
         }
         textToSpeech
@@ -110,8 +118,8 @@ fun OutfitGeneratorScreen(
         AlertDialog(
             onDismissRequest = { selectedOutfitToConfirm = null },
             icon = { Icon(Icons.Default.DryCleaning, contentDescription = null) },
-            title = { Text("Confirmar Outfit de Hoy") },
-            text = { Text("Al seleccionar 'Usar Hoy', las prendas elegidas pasarán automáticamente a la sección de Lavandería.") },
+            title = { Text(stringResource(R.string.confirm_outfit_title)) },
+            text = { Text(stringResource(R.string.confirm_outfit_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -119,12 +127,12 @@ fun OutfitGeneratorScreen(
                         selectedOutfitToConfirm = null
                     }
                 ) {
-                    Text("Confirmar")
+                    Text(stringResource(R.string.btn_accept))
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { selectedOutfitToConfirm = null }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -147,7 +155,7 @@ fun OutfitGeneratorScreen(
                     Icon(Icons.Default.FlightTakeoff, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Modo Viaje Activo: Sugerencias basadas en tu maleta para '${uiState.activeTripName}'",
+                        text = stringResource(R.string.active_trip_mode, uiState.activeTripName ?: ""),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -159,8 +167,8 @@ fun OutfitGeneratorScreen(
         OutlinedTextField(
             value = uiState.userInstruction,
             onValueChange = { viewModel.onInstructionChanged(it) },
-            label = { Text("Preferencia o enfoque para hoy (Opcional)") },
-            placeholder = { Text("Ej: Quiero usar mi camisa lila...") },
+            label = { Text(stringResource(R.string.user_instruction_label)) },
+            placeholder = { Text(stringResource(R.string.user_instruction_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 3
         )
@@ -168,13 +176,13 @@ fun OutfitGeneratorScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Sección de Prendas Base
-        Text(text = "Prendas Base (Opcional)", style = MaterialTheme.typography.titleSmall)
+        Text(text = stringResource(R.string.base_garments_title), style = MaterialTheme.typography.titleSmall)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { showGarmentPicker = true }) {
-                Icon(Icons.Default.AddCircle, contentDescription = "Añadir Prenda Base", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.AddCircle, contentDescription = stringResource(R.string.add_base_garment), tint = MaterialTheme.colorScheme.primary)
             }
             
             LazyRow(
@@ -187,21 +195,8 @@ fun OutfitGeneratorScreen(
                             modifier = Modifier.size(50.dp),
                             elevation = CardDefaults.cardElevation(1.dp)
                         ) {
-                            val imageUrl = when (item) {
-                                is ShirtEntity -> item.imageUrl
-                                is PantEntity -> item.imageUrl
-                                is ShoeEntity -> item.imageUrl
-                                is TieEntity -> item.imageUrl
-                                is WatchEntity -> item.imageUrl
-                                is FragranceEntity -> item.imageUrl
-                                is JacketEntity -> item.imageUrl
-                                is BagEntity -> item.imageUrl
-                                is DressEntity -> item.imageUrl
-                                is SkirtEntity -> item.imageUrl
-                                else -> ""
-                            }
                             AsyncImage(
-                                model = imageUrl,
+                                model = item.imageUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -209,7 +204,7 @@ fun OutfitGeneratorScreen(
                         }
                         Icon(
                             Icons.Default.Cancel,
-                            contentDescription = "Quitar",
+                            contentDescription = stringResource(R.string.remove_garment),
                             modifier = Modifier
                                 .size(16.dp)
                                 .align(Alignment.TopEnd)
@@ -230,7 +225,7 @@ fun OutfitGeneratorScreen(
         ) {
             Icon(Icons.Default.AutoAwesome, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (uiState.recommendations.isEmpty()) "Generar Recomendación" else "Generar otra opción")
+            Text(stringResource(R.string.btn_generate_outfit))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -245,7 +240,7 @@ fun OutfitGeneratorScreen(
                 ) {
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Analizando disponibilidad y combinaciones...", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.analyzing_outfits), style = MaterialTheme.typography.bodyMedium)
                 }
             } else if (uiState.isOutfitConfirmed) {
                 // Estado de éxito tras confirmar
@@ -267,12 +262,12 @@ fun OutfitGeneratorScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "¡Outfit registrado con éxito!",
+                            text = stringResource(R.string.outfit_registered_success),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Las prendas seleccionadas han sido movidas a la lavandería.",
+                            text = stringResource(R.string.outfit_moved_to_laundry),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -294,8 +289,10 @@ fun OutfitGeneratorScreen(
                         }
                     }
 
-                    items(uiState.recommendations, key = { it.id }) { outfit ->
+                    itemsIndexed(uiState.recommendations, key = { _, outfit -> outfit.id }) { index, outfit ->
+                        val proposalNumber = uiState.recommendations.size - index
                         RecommendationCard(
+                            proposalNumber = proposalNumber,
                             outfit = outfit,
                             isSpeaking = speakingOutfitId == outfit.id,
                             onUseToday = { selectedOutfitToConfirm = outfit },
@@ -311,13 +308,13 @@ fun OutfitGeneratorScreen(
 @Composable
 fun GarmentSelectionDialog(
     availableGarments: Map<String, List<Any>>,
-    selectedGarments: List<Any>,
+    selectedGarments: List<com.myperfectoutfit.domain.model.GarmentItem>,
     onDismiss: () -> Unit,
-    onToggleGarment: (Any) -> Unit
+    onToggleGarment: (com.myperfectoutfit.domain.model.GarmentItem) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Seleccionar Prenda Base") },
+        title = { Text(stringResource(R.string.select_base_garment)) },
         text = {
             LazyColumn(
                 modifier = Modifier
@@ -328,57 +325,39 @@ fun GarmentSelectionDialog(
                 availableGarments.forEach { (category, garments) ->
                     if (garments.isNotEmpty()) {
                         item {
-                            Text(text = category, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                text = if (category == "PERSONALIZADO" || category == "CUSTOM") category else stringResource(com.myperfectoutfit.ui.state.getCategoryStringRes(category)),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
-                        items(garments) { garment ->
-                            val isSelected = selectedGarments.contains(garment)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onToggleGarment(garment) }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Card(modifier = Modifier.size(40.dp)) {
-                                    val imageUrl = when (garment) {
-                                        is ShirtEntity -> garment.imageUrl
-                                        is PantEntity -> garment.imageUrl
-                                        is ShoeEntity -> garment.imageUrl
-                                        is TieEntity -> garment.imageUrl
-                                        is WatchEntity -> garment.imageUrl
-                                        is FragranceEntity -> garment.imageUrl
-                                        is JacketEntity -> garment.imageUrl
-                                        is BagEntity -> garment.imageUrl
-                                        is DressEntity -> garment.imageUrl
-                                        is SkirtEntity -> garment.imageUrl
-                                        else -> ""
+                        items(garments) { entity ->
+                            val garmentItem = com.myperfectoutfit.domain.model.GarmentItem.fromEntity(entity)
+                            if (garmentItem != null) {
+                                val isSelected = selectedGarments.any { it.id == garmentItem.id && it.categoryTag == garmentItem.categoryTag }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onToggleGarment(garmentItem) }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Card(modifier = Modifier.size(40.dp)) {
+                                        AsyncImage(
+                                            model = garmentItem.imageUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
                                     }
-                                    AsyncImage(
-                                        model = imageUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = garmentItem.formattedDescription,
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodySmall
                                     )
+                                    Checkbox(checked = isSelected, onCheckedChange = { onToggleGarment(garmentItem) })
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = when (garment) {
-                                        is ShirtEntity -> "${garment.brand} ${garment.primaryColor}"
-                                        is PantEntity -> "${garment.brand ?: "Pantalón"} ${garment.primaryColor}"
-                                        is ShoeEntity -> "${garment.brand} ${garment.color}"
-                                        is TieEntity -> "Corbata ${garment.colorRange}"
-                                        is WatchEntity -> "${garment.brand} ${garment.model}"
-                                        is FragranceEntity -> "${garment.brand} ${garment.name}"
-                                        is JacketEntity -> "${garment.brand ?: "Chaqueta"} ${garment.color}"
-                                        is BagEntity -> "${garment.brand ?: "Bolso"} ${garment.color}"
-                                        is DressEntity -> "${garment.brand ?: "Vestido"} ${garment.color}"
-                                        is SkirtEntity -> "${garment.brand ?: "Falda"} ${garment.color}"
-                                        else -> "Prenda"
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Checkbox(checked = isSelected, onCheckedChange = { onToggleGarment(garment) })
                             }
                         }
                     }
@@ -386,18 +365,21 @@ fun GarmentSelectionDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) { Text("Listo") }
+            Button(onClick = onDismiss) { Text(stringResource(R.string.btn_ready)) }
         }
     )
 }
 
 @Composable
 fun RecommendationCard(
+    proposalNumber: Int,
     outfit: RecommendedOutfit,
     isSpeaking: Boolean,
     onUseToday: () -> Unit,
     onToggleSpeak: () -> Unit
 ) {
+    var isExplanationExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -408,17 +390,24 @@ fun RecommendationCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Propuesta Sugerida",
+                    text = stringResource(R.string.proposal_number_title, proposalNumber),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
                 
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onToggleSpeak) {
                         Icon(
                             imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = if (isSpeaking) "Detener recomendación" else "Escuchar recomendación",
+                            contentDescription = if (isSpeaking) stringResource(R.string.stop_speaking) else stringResource(R.string.speak_outfit),
                             tint = if (isSpeaking) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = { isExplanationExpanded = !isExplanationExpanded }) {
+                        Icon(
+                            imageVector = if (isExplanationExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExplanationExpanded) stringResource(R.string.show_less) else stringResource(R.string.show_details),
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -442,7 +431,7 @@ fun RecommendationCard(
                     outfit.bag,
                     outfit.dress,
                     outfit.skirt
-                )
+                ) + outfit.customGarments
 
                 items(selectedItems) { item ->
                     Card(
@@ -460,6 +449,7 @@ fun RecommendationCard(
                             is BagEntity -> item.imageUrl
                             is DressEntity -> item.imageUrl
                             is SkirtEntity -> item.imageUrl
+                            is CustomGarmentEntity -> item.imageUrl
                             else -> ""
                         }
 
@@ -473,14 +463,30 @@ fun RecommendationCard(
                 }
             }
 
+            // Explicación colapsable
+            AnimatedVisibility(visible = isExplanationExpanded) {
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = outfit.text,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            if (!isExplanationExpanded) {
+                TextButton(
+                    onClick = { isExplanationExpanded = true },
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.show_explanation_btn),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = outfit.text,
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             Button(
                 onClick = onUseToday,
@@ -488,7 +494,7 @@ fun RecommendationCard(
             ) {
                 Icon(Icons.Default.DryCleaning, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Usar este Outfit Hoy")
+                Text(stringResource(R.string.confirm_use_today))
             }
         }
     }

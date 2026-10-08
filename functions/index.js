@@ -8,6 +8,11 @@ exports.getOutfitRecommendation = functions.runWith({
     timeoutSeconds: 60,
     memory: '512MB'
 }).https.onCall(async (data, context) => {
+    // Registro de verificación de App Check
+    if (!context.app) {
+        console.warn("App Check: Petición recibida sin verificación de App Check activa (Modo de pruebas/desarrollo).");
+    }
+
     const apiKey = process.env.AZURE_AI_KEY;
     const deployment = process.env.AZURE_AI_DEPLOYMENT;
     let endpoint = process.env.AZURE_AI_ENDPOINT.trim();
@@ -19,7 +24,8 @@ exports.getOutfitRecommendation = functions.runWith({
         const response = await axios.post(url, {
             model: deployment,
             messages: [
-                { role: "user", content: `${data.systemInstruction}\n\n${data.userPrompt}` }
+                { role: "system", content: data.systemInstruction },
+                { role: "user", content: data.userPrompt }
             ],
             max_completion_tokens: 2500
         }, {
@@ -38,6 +44,11 @@ exports.analyzeGarment = functions.runWith({
     timeoutSeconds: 60,
     memory: '512MB'
 }).https.onCall(async (data, context) => {
+    // Registro de verificación de App Check
+    if (!context.app) {
+        console.warn("App Check: Petición recibida sin verificación de App Check activa (Modo de pruebas/desarrollo).");
+    }
+
     const apiKey = process.env.AZURE_AI_KEY;
     const deployment = process.env.AZURE_AI_DEPLOYMENT;
     let endpoint = process.env.AZURE_AI_ENDPOINT.trim();
@@ -49,10 +60,11 @@ exports.analyzeGarment = functions.runWith({
         const response = await axios.post(url, {
             model: deployment,
             messages: [
+                { role: "system", content: data.systemInstruction },
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: `${data.systemInstruction}\n\n${data.userPrompt}` },
+                        { type: "text", text: data.userPrompt },
                         { type: "image_url", image_url: { url: data.image } }
                     ]
                 }

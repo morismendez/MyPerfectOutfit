@@ -15,6 +15,8 @@ import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.myperfectoutfit.domain.model.GarmentItem
+
 @Singleton
 class AzureOutfitService @Inject constructor() {
 
@@ -33,9 +35,9 @@ class AzureOutfitService @Inject constructor() {
         skirts: List<SkirtEntity>,
         customGarments: List<CustomGarmentEntity> = emptyList(),
         styleRules: List<StyleRuleEntity> = emptyList(),
-        baseGarments: List<Any> = emptyList(),
+        baseGarments: List<GarmentItem> = emptyList(),
         userInstruction: String = "",
-        excludeIds: List<String> = emptyList()
+        previousOutfits: List<String> = emptyList()
     ): String {
         val deviceLocale = Locale.getDefault()
         val languageName = deviceLocale.displayLanguage
@@ -77,46 +79,48 @@ class AzureOutfitService @Inject constructor() {
             inventorySections.add("--- PRENDAS PERSONALIZADAS ---\n" + customGarments.joinToString("\n") { "- ID:${it.id} | ${it.attributeValues.replace("|", " - ")}" })
         }
         val basePrompt = if (baseGarments.isNotEmpty()) {
-            "\nDEBES INCLUIR OBLIGATORIAMENTE ESTOS IDs:\n" + baseGarments.joinToString("\n") { item ->
-                when (item) {
-                    is ShirtEntity -> "- Camisa/Top: ${item.brand} ${item.primaryColor} (${item.subType})"
-                    is PantEntity -> "- Pantalón: ${item.brand} ${item.primaryColor} (${item.subType})"
-                    is ShoeEntity -> "- Calzado: ${item.brand} ${item.color} (${item.style})"
-                    is TieEntity -> "- Corbata: ${item.colorRange} ${item.pattern}"
-                    is WatchEntity -> "- Reloj: ${item.brand} ${item.model}"
-                    is FragranceEntity -> "- Fragancia: ${item.brand} ${item.name}"
-                    is JacketEntity -> "- Chaqueta: ${item.brand} ${item.color}"
-                    is BagEntity -> "- Bolso: ${item.brand} ${item.color}"
-                    is DressEntity -> "- Vestido: ${item.brand} ${item.color}"
-                    is SkirtEntity -> "- Falda: ${item.brand} ${item.color}"
-                    is CustomGarmentEntity -> "- Prenda Personalizada: ${item.attributeValues.replace("|", " - ")}"
-                    else -> "- Prenda seleccionada por el usuario"
-                }
+            "\nRESTRICCIÓN OBLIGATORIA DE PRENDAS BASE: El usuario exige usar estas prendas en la combinación. DEBES incluir EXACTAMENTE estos IDs de prenda:\n" + baseGarments.joinToString("\n") { item ->
+                "- DEBES INCLUIR OBLIGATORIAMENTE ID: ${item.categoryTag}=${item.id} (${item.formattedDescription})"
             }
         } else ""
 
+        val userInstructionFormatted = if (userInstruction.isNotBlank()) {
+            "\nINSTRUCCIÓN Y PREFERENCIA PRIORITARIA DEL USUARIO: \"$userInstruction\"\n" +
+            "REGLA DE CUMPLIMIENTO ESTRICTO: La instrucción del usuario es OBLIGATORIA. Si el usuario indica que hace calor, o que no desea usar un tipo de prenda específico (ej. chaqueta, abrigo, suéter, corbata), DEBES omitir esa prenda por completo dejando su tag como NONE (ejemplo: JACKET=NONE, TIE=NONE)."
+        } else ""
+
+        val excludePrompt = if (previousOutfits.isNotEmpty()) {
+            "\nRESTRICCIÓN DE NO REPETICIÓN DE OUTFITS:\n" +
+                    "Ya le has mostrado al usuario las siguientes combinaciones exactas en intentos anteriores:\n" +
+                    previousOutfits.joinToString("\n") { "- $it" } + "\n" +
+                    "DEBES generar una alternativa NUEVA y DIFERENTE. No repitas exactamente la misma combinación de prendas juntas. (Nota: puedes usar las mismas prendas individualmente si las combinas de una manera completamente distinta a las listas anteriores)."
+        } else ""
         val systemInstruction = """
-            Eres un Asesor de Imagen y Estilista Personal experto. Crea outfits impecables.
-            ${if (excludeIds.isNotEmpty()) "IMPORTANTE: Solo puedes usar las prendas listadas en el inventario. EVITA usar estas prendas: " + excludeIds.joinToString() else ""}
-            REGLAS DE ORO:
-            1. ARMONÍA: Aplica teoría del color.
-            2. OCASIÓN: Selecciona calzado acorde a la formalidad.
-            3. IDIOMA: Responde SIEMPRE en $languageName elegante y natural.
-            4. FORMATO: NO uses Markdown (sin asteriscos).
-            5. PROHIBIDO: No menciones códigos ID en la descripción narrativa. Los IDs solo van en la línea final.
+            Eres un Asesor de Imagen y Estilista Personal experto de lujo. Tu objetivo es crear outfits impecables y brindar asesoría sofisticada.
+            
+            ESTRUCTURA DE RESPUESTA OBLIGATORIA:
+            1. PRIMERO LA NARRATIVA: Escribe siempre 2 párrafos detallados, pulidos y elegantes en los que expliques la armonía de colores de la propuesta, la ocasión ideal y consejos de estilo prácticos. NO coloques la línea SELECCION_IDS en los párrafos ni al principio.
+            2. ÚLTIMA LÍNEA DE SELECCIÓN: Al final de todo tu mensaje, en una línea nueva e independiente, incluye el tag exacto de IDs numéricos:
+               SELECCION_IDS: SHIRT=id, PANT=id, SHOE=id, TIE=id, WATCH=id, FRAGRANCE=id, JACKET=id, BAG=id, DRESS=id, SKIRT=id, CUSTOM=id
+
+            REGLAS DE ORO Y SEGURIDAD:
+            1. OUTFIT COMPLETO OBLIGATORIO: Todo outfit sugerido DEBE incluir prendas superiores, inferiores y calzado (o vestido + calzado), más accesorios o fragancia acordes.
+            2. PRENDAS BASE: Si el usuario seleccionó prendas base, inclúyelas obligatoriamente en tu combinación y explica cómo combinarlas con el resto del inventario.
+            3. DIVERSIFICACIÓN: Si ya se han mostrado combinaciones anteriores, cambia los pantalones, calzado y accesorios para ofrecer alternativas distintas.
+            4. IDIOMA Y ESTILO: Responde SIEMPRE en $languageName sofisticado, elegante y natural. Sin Markdown (sin asteriscos o numerales).
         """.trimIndent()
 
         val userPrompt = """
             HOY ES: $currentDate
             ${if (styleRules.isNotEmpty()) "REGLAS: " + styleRules.joinToString { it.description } else ""}
-            ${if (excludeIds.isNotEmpty()) "EVITA ESTOS IDs: " + excludeIds.joinToString() else ""}
+            $userInstructionFormatted
             $basePrompt
-            INSTRUCCIÓN: $userInstruction
+            $excludePrompt
 
-            INVENTARIO:
+            INVENTARIO DE PRENDAS DISPONIBLES:
             ${inventorySections.joinToString("\n\n")}
 
-            FINALIZA CON: SELECCION_IDS: SHIRT=id, PANT=id, SHOE=id, TIE=id, WATCH=id, FRAGRANCE=id, JACKET=id, BAG=id, DRESS=id, SKIRT=id
+            FINALIZA OBLIGATORIAMENTE EN LA ÚLTIMA LÍNEA CON: SELECCION_IDS: SHIRT=id, PANT=id, SHOE=id, TIE=id, WATCH=id, FRAGRANCE=id, JACKET=id, BAG=id, DRESS=id, SKIRT=id, CUSTOM=id
         """.trimIndent()
 
         val data = mapOf(
@@ -241,6 +245,11 @@ class AzureOutfitService @Inject constructor() {
                 "Analiza minuciosamente este artículo de ${category ?: "tu inventario"} y extrae los siguientes datos con precisión técnica: $fields."
             )
         }
+    }
+
+    private fun cleanBrand(brand: String?): String {
+        if (brand.isNullOrBlank() || brand.lowercase() == "sin marca" || brand.lowercase() == "null") return ""
+        return brand
     }
 
     private fun getFieldsForCategory(categoryName: String?): String? {

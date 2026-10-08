@@ -6,6 +6,7 @@ import com.myperfectoutfit.data.local.entities.*
 import com.myperfectoutfit.data.remote.AzureOutfitService
 import com.myperfectoutfit.data.repository.SuitcaseRepository
 import com.myperfectoutfit.data.repository.WardrobeRepository
+import com.myperfectoutfit.domain.model.GarmentItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -34,7 +35,7 @@ data class AiOutfitUiState(
     val userInstruction: String = "",
     val activeInstruction: String = "", // La instrucción que se usó para las recomendaciones actuales
     val recommendations: List<RecommendedOutfit> = emptyList(),
-    val baseGarments: List<Any> = emptyList(),
+    val baseGarments: List<GarmentItem> = emptyList(),
     val availableGarments: Map<String, List<Any>> = emptyMap(),
     val isOutfitConfirmed: Boolean = false,
     val isTripModeActive: Boolean = false,
@@ -154,7 +155,7 @@ class OutfitViewModel @Inject constructor(
         }
     }
 
-    fun toggleBaseGarment(garment: Any) {
+    fun toggleBaseGarment(garment: GarmentItem) {
         _uiState.update { state ->
             val newList = if (state.baseGarments.contains(garment)) {
                 state.baseGarments - garment
@@ -163,6 +164,10 @@ class OutfitViewModel @Inject constructor(
             }
             state.copy(baseGarments = newList)
         }
+    }
+
+    fun toggleBaseGarmentRaw(rawEntity: Any) {
+        GarmentItem.fromEntity(rawEntity)?.let { toggleBaseGarment(it) }
     }
 
     fun onInstructionChanged(newInstruction: String) {
@@ -228,14 +233,25 @@ class OutfitViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Recopilamos los IDs de las prendas ya sugeridas en esta sesión para que la IA no las repita
-                val alreadyRecommendedIds = _uiState.value.recommendations.flatMap { outfit ->
-                    listOfNotNull(
-                        outfit.shirt?.id, outfit.pant?.id, outfit.shoe?.id,
-                        outfit.tie?.id, outfit.watch?.id, outfit.fragrance?.id, outfit.jacket?.id,
-                        outfit.bag?.id, outfit.dress?.id, outfit.skirt?.id
-                    )
-                }.map { it.toString() }
+                // Recopilamos las combinaciones completas ya sugeridas en esta sesión para que la IA no las repita
+                val previousOutfitsList = _uiState.value.recommendations.map { outfit ->
+                    val customItems = outfit.customGarments.map { 
+                        "CUSTOM_${it.id} (${it.attributeValues.replace("|", " ")})".trim() 
+                    }
+                    val items = listOfNotNull(
+                        outfit.shirt?.let { "SHIRT_${it.id} (${it.brand ?: ""} ${it.primaryColor})".trim() },
+                        outfit.pant?.let { "PANT_${it.id} (${it.brand ?: ""} ${it.primaryColor})".trim() },
+                        outfit.shoe?.let { "SHOE_${it.id} (${it.brand ?: ""} ${it.color})".trim() },
+                        outfit.dress?.let { "DRESS_${it.id} (${it.brand ?: ""} ${it.color})".trim() },
+                        outfit.skirt?.let { "SKIRT_${it.id} (${it.brand ?: ""} ${it.color})".trim() },
+                        outfit.jacket?.let { "JACKET_${it.id} (${it.brand ?: ""} ${it.color})".trim() },
+                        outfit.watch?.let { "WATCH_${it.id} (${it.brand} ${it.model})".trim() },
+                        outfit.fragrance?.let { "FRAGRANCE_${it.id} (${it.brand} ${it.name})".trim() },
+                        outfit.bag?.let { "BAG_${it.id} (${it.brand ?: ""} ${it.color})".trim() },
+                        outfit.tie?.let { "TIE_${it.id} (${it.colorRange})".trim() }
+                    ) + customItems
+                    items.joinToString(" + ")
+                }
 
                 // Solicitamos la recomendación usando la instrucción final (nueva o persistida)
                 val aiRecommendation = azureService.generateOutfitRecommendation(
@@ -253,7 +269,7 @@ class OutfitViewModel @Inject constructor(
                     styleRules = activeRules,
                     baseGarments = _uiState.value.baseGarments,
                     userInstruction = finalInstruction,
-                    excludeIds = alreadyRecommendedIds
+                    previousOutfits = previousOutfitsList
                 )
 
                 if (aiRecommendation.startsWith("Error", ignoreCase = true)) {
@@ -268,78 +284,90 @@ class OutfitViewModel @Inject constructor(
 
                 android.util.Log.d("OutfitParser", "Raw AI Response: $aiRecommendation")
 
-                // Regex ultra-flexible para capturar los IDs en cualquier formato (con o sin espacios, mayúsculas o minúsculas)
-                val regex = """SELECCION_IDS:?\s*SHIRT=([^,\s]+),?\s*PANT=([^,\s]+),?\s*SHOE=([^,\s]+),?\s*TIE=([^,\s]+),?\s*WATCH=([^,\s]+),?\s*FRAGRANCE=([^,\s]+),?\s*JACKET=([^,\s]+),?\s*BAG=([^,\s]+),?\s*DRESS=([^,\s]+),?\s*SKIRT=([^,\s.]+)""".toRegex(RegexOption.IGNORE_CASE)
-                val matchResult = regex.find(aiRecommendation)
-                
-                var cleanText = aiRecommendation
-                var selectedShirt: ShirtEntity? = null
-                var selectedPant: PantEntity? = null
-                var selectedShoe: ShoeEntity? = null
-                var selectedTie: TieEntity? = null
-                var selectedWatch: WatchEntity? = null
-                var selectedFragrance: FragranceEntity? = null
-                var selectedJacket: JacketEntity? = null
-                var selectedBag: BagEntity? = null
-                var selectedDress: DressEntity? = null
-                var selectedSkirt: SkirtEntity? = null
-
-                matchResult?.let { result ->
-                    // Limpiamos el texto eliminando la línea de IDs y cualquier formato markdown residual
-                    cleanText = aiRecommendation.replace(result.value, "")
-                        .replace(Regex("""#+\s*"""), "") // Quitar encabezados h1, h2...
-                        .replace("**", "")
-                        .replace("*", "")
-                        // Regex ultra-agresiva para IDs: borra (ID: 1), ID 1, Camisa 1, (SHOE 2), etc.
-                        .replace(Regex("""\(?\b(ID|SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT)[:\s]+\d+\)?""", RegexOption.IGNORE_CASE), "")
-                        .replace(Regex("""\(\s*\d+\s*\)"""), "") // Borra números entre paréntesis solos (1)
-                        .trim()
-                    
-                    // Función auxiliar para limpiar IDs de caracteres como puntos o espacios
-                    fun parseId(value: String): Long? = value.replace(Regex("[^0-9]"), "").toLongOrNull()
-                    
-                    selectedShirt = shirts.find { it.id == parseId(result.groupValues[1]) }
-                    selectedPant = pants.find { it.id == parseId(result.groupValues[2]) }
-                    selectedShoe = shoes.find { it.id == parseId(result.groupValues[3]) }
-                    selectedTie = ties.find { it.id == parseId(result.groupValues[4]) }
-                    selectedWatch = watches.find { it.id == parseId(result.groupValues[5]) }
-                    selectedFragrance = fragrances.find { it.id == parseId(result.groupValues[6]) }
-                    selectedJacket = jackets.find { it.id == parseId(result.groupValues[7]) }
-                    selectedBag = bags.find { it.id == parseId(result.groupValues[8]) }
-                    selectedDress = dresses.find { it.id == parseId(result.groupValues[9]) }
-                    selectedSkirt = skirts.find { it.id == parseId(result.groupValues[10]) }
+                fun extractTagId(tag: String): Long? {
+                    val regex = Regex("""\b$tag\s*[:=]\s*(?:[A-Z]+_)?([0-9]+)\b""", RegexOption.IGNORE_CASE)
+                    val match = regex.find(aiRecommendation)
+                    return match?.groupValues?.get(1)?.toLongOrNull()
                 }
 
-                // Búsqueda manual de IDs si el regex falla por formato
-                if (matchResult == null && aiRecommendation.contains("SHIRT=", ignoreCase = true)) {
-                    android.util.Log.w("OutfitParser", "Regex failed, attempting manual extraction")
-                    val tags = listOf("SHIRT", "PANT", "SHOE", "TIE", "WATCH", "FRAGRANCE", "JACKET", "BAG", "DRESS", "SKIRT")
-                    tags.forEach { tag ->
-                        val idValue = Regex("""$tag=([^\s,.]+)""", RegexOption.IGNORE_CASE)
-                            .find(aiRecommendation)?.groupValues?.get(1)
-                        
-                        val id = idValue?.replace(Regex("[^0-9]"), "")?.toLongOrNull()
-                        if (id != null) {
-                            when (tag) {
-                                "SHIRT" -> selectedShirt = shirts.find { it.id == id }
-                                "PANT" -> selectedPant = pants.find { it.id == id }
-                                "SHOE" -> selectedShoe = shoes.find { it.id == id }
-                                "TIE" -> selectedTie = ties.find { it.id == id }
-                                "WATCH" -> selectedWatch = watches.find { it.id == id }
-                                "FRAGRANCE" -> selectedFragrance = fragrances.find { it.id == id }
-                                "JACKET" -> selectedJacket = jackets.find { it.id == id }
-                                "BAG" -> selectedBag = bags.find { it.id == id }
-                                "DRESS" -> selectedDress = dresses.find { it.id == id }
-                                "SKIRT" -> selectedSkirt = skirts.find { it.id == id }
+                fun extractCustomTagIds(rawText: String): List<Long> {
+                    val regex = Regex("""\bCUSTOM\s*[:=]\s*([0-9,\s]+)""", RegexOption.IGNORE_CASE)
+                    val match = regex.find(rawText)
+                    val strVal = match?.groupValues?.get(1) ?: return emptyList()
+                    return strVal.split(",").mapNotNull { it.replace(Regex("[^0-9]"), "").toLongOrNull() }
+                }
+
+                var selectedShirt: ShirtEntity? = shirts.find { it.id == extractTagId("SHIRT") }
+                var selectedPant: PantEntity? = pants.find { it.id == extractTagId("PANT") }
+                var selectedShoe: ShoeEntity? = shoes.find { it.id == extractTagId("SHOE") }
+                var selectedTie: TieEntity? = ties.find { it.id == extractTagId("TIE") }
+                var selectedWatch: WatchEntity? = watches.find { it.id == extractTagId("WATCH") }
+                var selectedFragrance: FragranceEntity? = fragrances.find { it.id == extractTagId("FRAGRANCE") }
+                var selectedJacket: JacketEntity? = jackets.find { it.id == extractTagId("JACKET") }
+                var selectedBag: BagEntity? = bags.find { it.id == extractTagId("BAG") }
+                var selectedDress: DressEntity? = dresses.find { it.id == extractTagId("DRESS") }
+                var selectedSkirt: SkirtEntity? = skirts.find { it.id == extractTagId("SKIRT") }
+
+                val selectedCustomIds = extractCustomTagIds(aiRecommendation)
+                var selectedCustoms: List<CustomGarmentEntity> = customs.filter { selectedCustomIds.contains(it.id) }
+
+                // Garantizar prendas base elegidas explícitamente por el usuario
+                _uiState.value.baseGarments.forEach { garment ->
+                    when (garment) {
+                        is GarmentItem.Shirt -> if (selectedShirt == null) selectedShirt = garment.entity
+                        is GarmentItem.Pant -> if (selectedPant == null) selectedPant = garment.entity
+                        is GarmentItem.Shoe -> if (selectedShoe == null) selectedShoe = garment.entity
+                        is GarmentItem.Tie -> if (selectedTie == null) selectedTie = garment.entity
+                        is GarmentItem.Watch -> if (selectedWatch == null) selectedWatch = garment.entity
+                        is GarmentItem.Fragrance -> if (selectedFragrance == null) selectedFragrance = garment.entity
+                        is GarmentItem.Jacket -> if (selectedJacket == null) selectedJacket = garment.entity
+                        is GarmentItem.Bag -> if (selectedBag == null) selectedBag = garment.entity
+                        is GarmentItem.Dress -> if (selectedDress == null) selectedDress = garment.entity
+                        is GarmentItem.Skirt -> if (selectedSkirt == null) selectedSkirt = garment.entity
+                        is GarmentItem.Custom -> {
+                            if (!selectedCustoms.any { c -> c.id == garment.entity.id }) {
+                                selectedCustoms = selectedCustoms + garment.entity
                             }
                         }
                     }
-                    // Limpiamos la línea de IDs del texto final
-                    cleanText = aiRecommendation.split(Regex("SELECCION_IDS", RegexOption.IGNORE_CASE))[0].trim()
                 }
 
+                // GARANTIZAR OUTFIT COMPLETO (Pantalón/Falda y Calzado) si existen en el armario del usuario
+                if (selectedDress == null) {
+                    if (selectedPant == null && selectedSkirt == null) {
+                        if (pants.isNotEmpty()) {
+                            selectedPant = pants.firstOrNull()
+                        } else if (skirts.isNotEmpty()) {
+                            selectedSkirt = skirts.firstOrNull()
+                        }
+                    }
+                    if (selectedShoe == null && shoes.isNotEmpty()) {
+                        selectedShoe = shoes.firstOrNull()
+                    }
+                } else {
+                    if (selectedShoe == null && shoes.isNotEmpty()) {
+                        selectedShoe = shoes.firstOrNull()
+                    }
+                }
+
+                var cleanText = if (aiRecommendation.contains("SELECCION_IDS", ignoreCase = true)) {
+                    val parts = aiRecommendation.split(Regex("SELECCION_IDS", RegexOption.IGNORE_CASE))
+                    parts[0].ifBlank { parts.getOrNull(1) ?: "" }
+                } else {
+                    aiRecommendation
+                }
+
+                cleanText = cleanText
+                    .replace(Regex("""SELECCION_IDS:.*""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""#+\s*"""), "")
+                    .replace("**", "")
+                    .replace("*", "")
+                    .replace(Regex("""\(?\b(ID|SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT|CUSTOM)[:=\s]+(?:[A-Z]+_)?\d+\)?""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""\(\s*\d+\s*\)"""), "")
+                    .trim()
+
                 // VALIDACIÓN CRÍTICA: Si no pudimos extraer NINGUNA prenda, la respuesta no es válida.
-                if (selectedShirt == null && selectedPant == null && selectedShoe == null && selectedDress == null) {
+                if (selectedShirt == null && selectedPant == null && selectedShoe == null && selectedDress == null && selectedSkirt == null && selectedCustoms.isEmpty()) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -349,9 +377,24 @@ class OutfitViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Fallback de texto si la explicación es muy corta o inexistente
-                if (cleanText.length < 10) {
-                    cleanText = "Basado en tu inventario, esta es la mejor combinación para hoy considerando el estilo y la armonía de colores."
+                // Fallback dinámico específico de la combinación seleccionada si el texto de la IA es corto o inexistente
+                if (cleanText.length < 15) {
+                    val parts = mutableListOf<String>()
+                    selectedShirt?.let { parts.add("${it.subType} ${it.brand ?: ""} ${it.primaryColor}".trim()) }
+                    selectedDress?.let { parts.add("Vestido ${it.brand ?: ""} ${it.color}".trim()) }
+                    selectedPant?.let { parts.add("pantalón ${it.brand ?: ""} ${it.primaryColor}".trim()) }
+                    selectedSkirt?.let { parts.add("falda ${it.brand ?: ""} ${it.color}".trim()) }
+                    selectedShoe?.let { parts.add("calzado ${it.brand ?: ""} ${it.color}".trim()) }
+                    selectedJacket?.let { parts.add("chaqueta ${it.brand ?: ""} ${it.color}".trim()) }
+                    selectedWatch?.let { parts.add("reloj ${it.brand} ${it.model}".trim()) }
+                    selectedFragrance?.let { parts.add("fragancia ${it.brand} ${it.name}".trim()) }
+                    selectedCustoms.forEach { parts.add(it.attributeValues.replace("|", " ")) }
+
+                    cleanText = if (parts.isNotEmpty()) {
+                        "Propuesta equilibrada combinando " + parts.joinToString(", ") + ". Selección refinada para lucir elegante y coordinado hoy."
+                    } else {
+                        "Basado en tu inventario, esta es la mejor combinación para hoy considerando el estilo y la armonía de colores."
+                    }
                 }
 
                 val newRecommendation = RecommendedOutfit(
@@ -365,7 +408,8 @@ class OutfitViewModel @Inject constructor(
                     jacket = selectedJacket,
                     bag = selectedBag,
                     dress = selectedDress,
-                    skirt = selectedSkirt
+                    skirt = selectedSkirt,
+                    customGarments = selectedCustoms
                 )
 
                 _uiState.update {
@@ -384,7 +428,7 @@ class OutfitViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getPrimaryUser().firstOrNull()?.let { user ->
                 // Incluimos las prendas base que el usuario seleccionó manualmente
-                val baseCustoms = _uiState.value.baseGarments.filterIsInstance<CustomGarmentEntity>()
+                val baseCustoms = _uiState.value.baseGarments.filterIsInstance<GarmentItem.Custom>().map { it.entity }
                 
                 repository.confirmAndWearOutfit(
                     userId = user.id,

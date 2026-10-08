@@ -114,12 +114,17 @@ dependencies {
     implementation("com.google.firebase:firebase-config-ktx")
     implementation("com.google.firebase:firebase-functions-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("com.google.firebase:firebase-appcheck-debug")
 
     // Google Drive & Auth
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("com.google.api-client:google-api-client-android:2.2.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20240521-2.0.0")
     implementation("com.google.http-client:google-http-client-gson:1.44.1")
+
+    // ML Kit Image Labeling (Vision Guardrail)
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)

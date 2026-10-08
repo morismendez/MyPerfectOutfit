@@ -1,24 +1,26 @@
 package com.myperfectoutfit.ui.enums
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.myperfectoutfit.R
 
-enum class SuitcaseType(val title: String, val icon: ImageVector) {
-    CARRY_ON("Equipaje de mano", Icons.Default.BusinessCenter),
-    CHECKED("Maleta documentada", Icons.Default.Luggage)
+enum class SuitcaseType(@StringRes val titleRes: Int, val icon: ImageVector) {
+    CARRY_ON(R.string.suitcase_hand_bag, Icons.Default.BusinessCenter),
+    CHECKED(R.string.suitcase_large, Icons.Default.Luggage)
 }
 
-enum class TripStyle(val title: String, val icon: ImageVector) {
-    BUSINESS("Negocios / Formal", Icons.Default.Work),
-    CASUAL("Casual / Urbano", Icons.Default.DirectionsWalk),
-    BEACH("Playa / Cálido", Icons.Default.WbSunny),
-    COLD("Clima Frío", Icons.Default.AcUnit)
+enum class TripStyle(@StringRes val titleRes: Int, val icon: ImageVector) {
+    BUSINESS(R.string.style_business, Icons.Default.Work),
+    CASUAL(R.string.style_casual, Icons.Default.DirectionsWalk),
+    BEACH(R.string.style_beach, Icons.Default.WbSunny),
+    COLD(R.string.style_cold, Icons.Default.AcUnit)
 }
 
-enum class SpecialEvent(val title: String) {
-    FORMAL_DINNER("Cena formal de noche"),
-    GYM("Ejercicio / Gimnasio"),
-    OUTDOOR("Caminata al aire libre"),
-    OTHER("Otro (especificar)")
+enum class SpecialEvent(@StringRes val titleRes: Int) {
+    FORMAL_DINNER(R.string.event_formal_dinner),
+    GYM(R.string.event_gym),
+    OUTDOOR(R.string.event_outdoor),
+    OTHER(R.string.event_other)
 }

@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.ui.viewmodel.ChatMessage
@@ -56,8 +58,8 @@ fun StyleChatScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Borrar Historial") },
-            text = { Text("¿Estás seguro de que quieres borrar toda la conversación? Esta acción no se puede deshacer.") },
+            title = { Text(stringResource(R.string.delete_chat_history_title)) },
+            text = { Text(stringResource(R.string.delete_chat_history_confirm)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -66,12 +68,12 @@ fun StyleChatScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Borrar")
+                    Text(stringResource(R.string.btn_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -141,15 +143,15 @@ fun StyleChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Asesoría de Estilo") },
+                title = { Text(stringResource(R.string.chat_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "Borrar historial", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.delete_chat_history_title), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -208,7 +210,7 @@ fun StyleChatScreen(
                     ) {
                         Icon(
                             Icons.Default.Close, 
-                            contentDescription = "Quitar", 
+                            contentDescription = stringResource(R.string.remove_garment), 
                             tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
@@ -230,22 +232,22 @@ fun StyleChatScreen(
                     IconButton(onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) }) {
                         Icon(
                             Icons.Default.CameraAlt, 
-                            contentDescription = "Tomar foto",
+                            contentDescription = stringResource(R.string.btn_take_photo),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     IconButton(onClick = { galleryLauncher.launch("image/*") }) {
                         Icon(
                             Icons.Default.AddPhotoAlternate, 
-                            contentDescription = "Adjuntar foto",
+                            contentDescription = stringResource(R.string.btn_choose_gallery),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     
                     OutlinedTextField(
                         value = inputText,
-                        onValueChange = { inputText = it },
-                        placeholder = { Text("Escribe tu duda de estilo...") },
+                        onValueChange = { if (it.length <= 500) inputText = it },
+                        placeholder = { Text(stringResource(R.string.type_message_placeholder)) },
                         modifier = Modifier.weight(1f),
                         maxLines = 4,
                         shape = RoundedCornerShape(24.dp)
@@ -255,15 +257,61 @@ fun StyleChatScreen(
                     
                     FilledIconButton(
                         onClick = {
-                            viewModel.sendMessage(inputText, selectedImageUri, selectedBitmap)
-                            inputText = ""
-                            selectedImageUri = null
-                            selectedBitmap = null
+                            val bitmap = selectedBitmap
+                            if (bitmap != null) {
+                                val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
+                                val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(
+                                    com.google.mlkit.vision.label.defaults.ImageLabelerOptions.DEFAULT_OPTIONS
+                                )
+                                labeler.process(image)
+                                    .addOnSuccessListener { labels ->
+                                        val detectedNames = labels.map { it.text.lowercase() }
+                                        val isFashionRelated = detectedNames.any { label ->
+                                            label.contains("clothing") || label.contains("footwear") || 
+                                            label.contains("shoe") || label.contains("shirt") || 
+                                            label.contains("pant") || label.contains("dress") || 
+                                            label.contains("skirt") || label.contains("jacket") || 
+                                            label.contains("bag") || label.contains("watch") || 
+                                            label.contains("glasses") || label.contains("fashion") || 
+                                            label.contains("sleeve") || label.contains("apparel") ||
+                                            label.contains("top") || label.contains("outerwear") ||
+                                            label.contains("tie") || label.contains("boot") ||
+                                            label.contains("jeans") || label.contains("trousers") ||
+                                            label.contains("suit") || label.contains("hat") ||
+                                            label.contains("belt") || label.contains("jewelry") ||
+                                            label.contains("accessory") || label.contains("person") ||
+                                            label.contains("human")
+                                        }
+                                        if (isFashionRelated || labels.isEmpty()) {
+                                            viewModel.sendMessage(inputText, selectedImageUri, selectedBitmap)
+                                            inputText = ""
+                                            selectedImageUri = null
+                                            selectedBitmap = null
+                                        } else {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                context.getString(R.string.non_garment_image_error),
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                    .addOnFailureListener {
+                                        viewModel.sendMessage(inputText, selectedImageUri, selectedBitmap)
+                                        inputText = ""
+                                        selectedImageUri = null
+                                        selectedBitmap = null
+                                    }
+                            } else {
+                                viewModel.sendMessage(inputText, selectedImageUri, selectedBitmap)
+                                inputText = ""
+                                selectedImageUri = null
+                                selectedBitmap = null
+                            }
                         },
                         enabled = ((inputText.isNotBlank() || selectedImageUri != null)) && !uiState.isLoading,
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar")
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.send_btn))
                     }
                 }
             }
@@ -318,7 +366,7 @@ fun ChatBubble(message: ChatMessage) {
                         color = contentColor.copy(alpha = 0.2f)
                     )
                     Text(
-                        text = "Prendas sugeridas:",
+                        text = stringResource(R.string.suggested_items_label),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp),
                         color = contentColor.copy(alpha = 0.7f)
@@ -337,7 +385,7 @@ fun ChatBubble(message: ChatMessage) {
             }
         }
         Text(
-            text = if (message.isUser) "Tú" else "Asesor IA",
+            text = if (message.isUser) stringResource(R.string.chat_user_label) else stringResource(R.string.chat_ai_label),
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -381,7 +429,7 @@ fun SuggestedItemCard(item: SuitcaseItem, contentColor: Color) {
                 if (item.isDirty) {
                     Icon(
                         Icons.Default.LocalLaundryService,
-                        contentDescription = "Sucia",
+                        contentDescription = stringResource(R.string.in_laundry),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(4.dp)
@@ -413,7 +461,7 @@ fun TypingIndicator() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "El asesor está escribiendo...",
+            stringResource(R.string.ai_typing_indicator),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold

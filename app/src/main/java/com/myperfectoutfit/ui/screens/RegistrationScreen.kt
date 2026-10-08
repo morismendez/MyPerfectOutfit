@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.myperfectoutfit.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -116,28 +118,27 @@ fun RegistrationScreen(
         AlertDialog(
             onDismissRequest = { },
             confirmButton = { },
-            title = { Text("Restaurando datos") },
+            title = { Text(stringResource(R.string.restoring_data_title)) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                    Text("Esto puede tomar unos segundos...", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.restoring_data_sub), style = MaterialTheme.typography.bodySmall)
                 }
             }
         )
     }
 
     if (showSourceDialog) {
-        // ... (contenido existente del diálogo de origen)
         AlertDialog(
             onDismissRequest = { showSourceDialog = false },
-            title = { Text("Seleccionar Imagen") },
+            title = { Text(stringResource(R.string.select_image_title)) },
             text = {
                 Column {
                     ListItem(
-                        headlineContent = { Text("Tomar Foto") },
+                        headlineContent = { Text(stringResource(R.string.btn_take_photo)) },
                         leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
                         modifier = Modifier.clickable {
                             showSourceDialog = false
@@ -145,7 +146,7 @@ fun RegistrationScreen(
                         }
                     )
                     ListItem(
-                        headlineContent = { Text("Elegir de Galería") },
+                        headlineContent = { Text(stringResource(R.string.btn_choose_gallery)) },
                         leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
                         modifier = Modifier.clickable {
                             showSourceDialog = false
@@ -156,7 +157,7 @@ fun RegistrationScreen(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showSourceDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showSourceDialog = false }) { Text(stringResource(R.string.btn_cancel)) }
             }
         )
     }
@@ -215,14 +216,14 @@ fun RegistrationScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "¡Hola!",
+            text = stringResource(R.string.welcome_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
         
         Text(
-            text = "Configura tu perfil para comenzar",
+            text = stringResource(R.string.setup_profile_subtitle),
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -232,7 +233,7 @@ fun RegistrationScreen(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nombre completo") },
+            label = { Text(stringResource(R.string.full_name_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -242,7 +243,7 @@ fun RegistrationScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Correo electrónico") },
+            label = { Text(stringResource(R.string.email_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -250,12 +251,12 @@ fun RegistrationScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Personaliza tu Armario",
+            text = stringResource(R.string.customize_wardrobe_title),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.align(Alignment.Start)
         )
         Text(
-            text = "Selecciona las categorías que utilizas:",
+            text = stringResource(R.string.select_used_categories),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.Start)
@@ -277,7 +278,7 @@ fun RegistrationScreen(
                             activeCategories.add(category)
                         }
                     },
-                    label = { Text(category.displayName) }
+                    label = { Text(stringResource(category.displayNameRes)) }
                 )
             }
         }
@@ -300,12 +301,12 @@ fun RegistrationScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = name.isNotBlank() && email.contains("@") && activeCategories.isNotEmpty()
         ) {
-            Text("¡Todo listo!")
+            Text(stringResource(R.string.btn_ready))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text(text = "O si ya eres usuario:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = stringResource(R.string.already_user_prompt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -316,7 +317,7 @@ fun RegistrationScreen(
         ) {
             Icon(Icons.Default.CloudDownload, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Restaurar desde un Respaldo")
+            Text(stringResource(R.string.restore_backup_btn))
         }
 
         Spacer(modifier = Modifier.height(40.dp))

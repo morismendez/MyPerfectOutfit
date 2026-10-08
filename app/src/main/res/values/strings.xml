@@ -1,3 +1,398 @@
 <resources>
     <string name="app_name">MyPerfectOutfit</string>
+
+    <!-- Navigation -->
+    <string name="nav_wardrobe">Wardrobe</string>
+    <string name="nav_ai_advisor">AI Advisor</string>
+    <string name="nav_history">History</string>
+    <string name="nav_laundry">Laundry</string>
+
+    <!-- Categories -->
+    <string name="cat_all">All</string>
+    <string name="cat_shirts">Shirts</string>
+    <string name="cat_pants">Pants</string>
+    <string name="cat_shoes">Shoes</string>
+    <string name="cat_ties">Ties</string>
+    <string name="cat_watches">Watches</string>
+    <string name="cat_jackets">Jackets</string>
+    <string name="cat_fragrances">Fragrances</string>
+    <string name="cat_bags">Bags</string>
+    <string name="cat_dresses">Dresses</string>
+    <string name="cat_skirts">Skirts</string>
+    <string name="cat_laundry">Laundry</string>
+
+    <!-- Advisor Features -->
+    <string name="feature_daily_title">Daily Outfit</string>
+    <string name="feature_daily_desc">Get personalized daily recommendations based on weather, occasion, and your wardrobe.</string>
+    <string name="feature_suitcase_title">AI Suitcase</string>
+    <string name="feature_suitcase_desc">Organize your packing list for any trip with smart recommendations.</string>
+    <string name="feature_planner_title">Future Planner</string>
+    <string name="feature_planner_desc">Plan your outfits ahead for upcoming events and calendar dates.</string>
+    <string name="feature_chat_title">Style Consultations</string>
+    <string name="feature_chat_desc">Chat with your AI stylist for advice, combinations, and fashion tips.</string>
+
+    <!-- Suitcase Types & Styles -->
+    <string name="suitcase_hand_bag">Carry-on Bag</string>
+    <string name="suitcase_large">Checked Bag</string>
+    <string name="style_business">Business / Formal</string>
+    <string name="style_casual">Casual / Urban</string>
+    <string name="style_beach">Beach / Warm</string>
+    <string name="style_cold">Cold Weather</string>
+    <string name="event_formal_dinner">Formal Dinner</string>
+    <string name="event_gym">Gym / Exercise</string>
+    <string name="event_outdoor">Outdoor Walk</string>
+    <string name="event_other">Other (specify)</string>
+
+    <!-- Common Buttons & Actions -->
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_close">Close</string>
+    <string name="btn_add">Add</string>
+    <string name="btn_edit">Edit</string>
+    <string name="btn_next">Next</string>
+    <string name="btn_back">Back</string>
+    <string name="btn_create">Create</string>
+    <string name="btn_analyze_ai">Analyze with AI</string>
+    <string name="btn_analyzing">Analyzing…</string>
+    <string name="btn_select_photo">Select Photo</string>
+    <string name="btn_take_photo">Take Photo</string>
+    <string name="btn_choose_gallery">Choose from Gallery</string>
+    <string name="btn_change_photo">Change Photo</string>
+    <string name="btn_accept">Accept</string>
+    <string name="btn_ready">All set!</string>
+
+    <!-- Wardrobe & Garment Dialog -->
+    <string name="add_garment">Add %1$s</string>
+    <string name="edit_garment">Edit %1$s</string>
+    <string name="add_custom_category">New Category</string>
+    <string name="category_name_label">Category Name</string>
+    <string name="category_attributes_label">Attributes (comma separated)</string>
+    <string name="requires_laundry_label">Requires laundry?</string>
+    <string name="delete_garment_title">Delete Garment</string>
+    <string name="delete_garment_confirm">Are you sure you want to delete this garment from your wardrobe? This action cannot be undone.</string>
+    <string name="delete_category_title">Delete Category</string>
+    <string name="delete_category_confirm">Are you sure you want to delete the category \'%1$s\'? All garments in it will also be deleted.</string>
+    <string name="offline_mode_warning">Offline mode: please fill in the details manually.</string>
+    <string name="select_image_title">Select Image</string>
+
+    <!-- Garment Fields -->
+    <string name="category_label">Category</string>
+    <string name="brand_label">Brand</string>
+    <string name="type_label">Type</string>
+    <string name="color_label">Primary Color</string>
+    <string name="secondary_color_label">Secondary Color (Optional)</string>
+    <string name="pattern_label">Pattern</string>
+    <string name="sleeve_length_label">Sleeve Length</string>
+    <string name="neckline_label">Collar / Neckline</string>
+    <string name="material_label">Material</string>
+    <string name="formality_label">Formality</string>
+    <string name="fit_label">Fit</string>
+    <string name="fit_style_label">Cut / Fit Style</string>
+    <string name="length_label">Length</string>
+    <string name="waist_rise_label">Waist Rise</string>
+    <string name="shoe_style_label">Style / Model</string>
+    <string name="heel_height_label">Heel / Sole Height</string>
+    <string name="toe_style_label">Toe Style</string>
+    <string name="closure_type_label">Closure Type</string>
+    <string name="color_range_label">Color Range</string>
+    <string name="width_label">Width (cm)</string>
+    <string name="model_label">Model</string>
+    <string name="dial_color_label">Dial Color</string>
+    <string name="strap_color_label">Strap Color</string>
+    <string name="strap_material_label">Strap Material</string>
+    <string name="name_label">Name</string>
+    <string name="occasion_label">Occasion</string>
+    <string name="profile_label">Scent Profile</string>
+    <string name="bag_style_label">Bag Style</string>
+    <string name="bag_size_label">Bag Size</string>
+    <string name="dress_length_label">Dress Length</string>
+    <string name="sleeve_style_label">Sleeve Style</string>
+    <string name="skirt_length_label">Skirt Length</string>
+    <string name="skirt_style_label">Skirt Style</string>
+
+    <!-- Dropdown Options -->
+    <!-- Materials -->
+    <string name="opt_cotton">Cotton</string>
+    <string name="opt_denim">Denim</string>
+    <string name="opt_linen">Linen</string>
+    <string name="opt_silk">Silk</string>
+    <string name="opt_wool">Wool</string>
+    <string name="opt_leather">Leather</string>
+    <string name="opt_suede">Suede</string>
+    <string name="opt_polyester">Polyester</string>
+    <string name="opt_lace">Lace</string>
+
+    <!-- Formality -->
+    <string name="opt_formal">Formal</string>
+    <string name="opt_smart_casual">Smart Casual</string>
+    <string name="opt_casual">Casual</string>
+    <string name="opt_sporty">Sporty</string>
+    <string name="opt_gala">Gala / Black Tie</string>
+
+    <!-- Sleeve Lengths -->
+    <string name="opt_long_sleeve">Long sleeve</string>
+    <string name="opt_short_sleeve">Short sleeve</string>
+    <string name="opt_three_quarter_sleeve">3/4 sleeve</string>
+    <string name="opt_sleeveless">Sleeveless</string>
+
+    <!-- Necklines -->
+    <string name="opt_collared">Collared / Button-down</string>
+    <string name="opt_crew_neck">Crew neck</string>
+    <string name="opt_v_neck">V-neck</string>
+    <string name="opt_mao_collar">Mao collar</string>
+    <string name="opt_polo">Polo</string>
+    <string name="opt_halter">Halter</string>
+
+    <!-- Lengths -->
+    <string name="opt_long">Long</string>
+    <string name="opt_ankle_length">Ankle-length</string>
+    <string name="opt_midi">Midi</string>
+    <string name="opt_short">Short</string>
+    <string name="opt_mini">Mini</string>
+
+    <!-- Waist Rises -->
+    <string name="opt_high_rise">High rise</string>
+    <string name="opt_mid_rise">Mid rise</string>
+    <string name="opt_low_rise">Low rise</string>
+
+    <!-- Heel / Sole Heights -->
+    <string name="opt_flat">Flat</string>
+    <string name="opt_low_heel">Low heel</string>
+    <string name="opt_mid_heel">Mid heel</string>
+    <string name="opt_high_heel">High heel</string>
+    <string name="opt_platform">Platform</string>
+
+    <!-- Toe Styles -->
+    <string name="opt_plain_toe">Plain toe</string>
+    <string name="opt_cap_toe">Cap toe</string>
+    <string name="opt_pointed_toe">Pointed toe</string>
+    <string name="opt_square_toe">Square toe</string>
+    <string name="opt_peep_toe">Peep toe</string>
+
+    <!-- Closure Types -->
+    <string name="opt_laces">Laces</string>
+    <string name="opt_buckle">Buckle</string>
+    <string name="opt_slip_on">Slip-on</string>
+    <string name="opt_zipper">Zipper</string>
+    <string name="opt_straps">Straps</string>
+    <string name="opt_buttons">Buttons</string>
+    <string name="opt_open">Open</string>
+    <string name="opt_double_breasted">Double-breasted</string>
+
+    <!-- Shoe Subtypes -->
+    <string name="opt_dress_shoes">Dress shoes</string>
+    <string name="opt_sneakers">Sneakers</string>
+    <string name="opt_sandals">Sandals</string>
+    <string name="opt_high_heels">High heels</string>
+    <string name="opt_flats">Flats</string>
+    <string name="opt_boots">Boots</string>
+    <string name="opt_moccasins">Moccasins</string>
+
+    <!-- Pant Subtypes -->
+    <string name="opt_pants">Pants</string>
+    <string name="opt_jeans">Jeans</string>
+    <string name="opt_shorts">Shorts</string>
+    <string name="opt_bermudas">Bermudas</string>
+    <string name="opt_leggings">Leggings</string>
+    <string name="opt_jumpsuit">Jumpsuit</string>
+    <string name="opt_overalls">Overalls</string>
+
+    <!-- Shirt Subtypes -->
+    <string name="opt_shirt">Shirt</string>
+    <string name="opt_tshirt">T-Shirt</string>
+    <string name="opt_blouse">Blouse</string>
+    <string name="opt_top">Top</string>
+    <string name="opt_crop_top">Crop Top</string>
+    <string name="opt_bodysuit">Bodysuit</string>
+    <string name="opt_guayabera">Guayabera</string>
+
+    <!-- Watch Strap Materials -->
+    <string name="opt_steel">Stainless steel</string>
+    <string name="opt_rubber">Rubber</string>
+    <string name="opt_fabric">Fabric / Canvas</string>
+    <string name="opt_titanium">Titanium</string>
+
+    <!-- Jacket Types -->
+    <string name="opt_jacket">Jacket</string>
+    <string name="opt_coat">Coat</string>
+    <string name="opt_blazer">Blazer</string>
+    <string name="opt_bomber">Bomber jacket</string>
+    <string name="opt_parka">Parka</string>
+    <string name="opt_cardigan">Cardigan</string>
+
+    <!-- Bag Styles & Sizes -->
+    <string name="opt_tote">Tote bag</string>
+    <string name="opt_clutch">Clutch</string>
+    <string name="opt_crossbody">Crossbody</string>
+    <string name="opt_backpack">Backpack</string>
+    <string name="opt_briefcase">Briefcase</string>
+    <string name="opt_hobo">Hobo bag</string>
+    <string name="opt_small">Small</string>
+    <string name="opt_medium">Medium</string>
+    <string name="opt_large">Large</string>
+    <string name="opt_extra_large">Extra Large</string>
+
+    <!-- Skirt Styles -->
+    <string name="opt_pencil_skirt">Pencil</string>
+    <string name="opt_aline_skirt">A-Line</string>
+    <string name="opt_pleated_skirt">Pleated</string>
+    <string name="opt_circle_skirt">Circle</string>
+    <string name="opt_maxi">Maxi</string>
+
+    <!-- Registration Screen -->
+    <string name="welcome_title">Hello!</string>
+    <string name="setup_profile_subtitle">Set up your profile to get started</string>
+    <string name="full_name_label">Full Name</string>
+    <string name="email_label">Email Address</string>
+    <string name="customize_wardrobe_title">Customize your Wardrobe</string>
+    <string name="select_used_categories">Select the categories you use:</string>
+    <string name="already_user_prompt">Or if you are already a user:</string>
+    <string name="restore_backup_btn">Restore from a Backup</string>
+    <string name="restoring_data_title">Restoring Data</string>
+    <string name="restoring_data_sub">This may take a few seconds…</string>
+
+    <!-- Common Dropdown Other -->
+    <string name="dropdown_other">Other…</string>
+    <string name="write_other">Type %1$s</string>
+
+    <!-- Profile & Settings -->
+    <string name="edit_profile_title">Edit Profile</string>
+    <string name="display_mode_title">Category Display Mode</string>
+    <string name="display_mode_text">Text</string>
+    <string name="display_mode_icons">Icons</string>
+    <string name="display_mode_both">Both</string>
+    <string name="active_categories_title">Wardrobe Categories</string>
+    <string name="style_rules_title">Style Rules</string>
+    <string name="add_rule_title">Add Style Rule</string>
+    <string name="rule_title_label">Rule Title</string>
+    <string name="rule_desc_label">Rule Description</string>
+    <string name="share_backup">Share Backup</string>
+    <string name="save_to_folder">Save Backup to Folder</string>
+    <string name="restore_from_file">Restore from File</string>
+    <string name="backup_error">Error creating backup.</string>
+
+    <!-- AI Advisor & Generator -->
+    <string name="advisor_menu_title">AI Fashion Advisor</string>
+    <string name="generator_title">Daily Outfit</string>
+    <string name="btn_generate_outfit">Generate Outfit</string>
+    <string name="generating_outfit">Generating outfit with AI…</string>
+    <string name="outfit_confirm_prompt">Would you like to wear this outfit today?</string>
+    <string name="select_base_garment">Select Base Garment</string>
+    <string name="confirm_outfit_title">Confirm Today\'s Outfit</string>
+    <string name="confirm_outfit_text">When selecting \'Wear Today\', the chosen garments will automatically be moved to Laundry.</string>
+    <string name="select_today_outfit">Select Outfit for Today</string>
+    <string name="plan_future_outfit">Plan Future Outfit</string>
+    <string name="user_instruction_label">Preference or focus for today (Optional)</string>
+    <string name="user_instruction_placeholder">e.g. I want to wear my lilac shirt…</string>
+    <string name="base_garments_title">Base Garments (Optional)</string>
+    <string name="add_base_garment">Add Base Garment</string>
+    <string name="remove_garment">Remove</string>
+    <string name="active_trip_mode">Trip Mode Active: Suggestions based on suitcase for \'%1$s\'</string>
+    <string name="analyzing_outfits">Analyzing availability and combinations…</string>
+    <string name="outfit_registered_success">Outfit registered successfully!</string>
+    <string name="outfit_moved_to_laundry">The selected garments have been moved to Laundry.</string>
+    <string name="suggested_outfit_title">Suggested Outfit</string>
+    <string name="speak_outfit">Listen to recommendation</string>
+    <string name="stop_speaking">Stop recommendation</string>
+    <string name="confirm_use_today">Wear Today</string>
+
+    <!-- Planning Screen -->
+    <string name="plan_ai_title">Plan with AI</string>
+    <string name="select_period_title">Select Period</string>
+    <string name="when_use_outfits_prompt">When do you want to wear the outfits?</string>
+    <string name="btn_generate">Generate</string>
+    <string name="ai_instruction_label">AI Instruction (Optional)</string>
+    <string name="ai_instruction_placeholder">e.g. Formal outfits for this week…</string>
+    <string name="btn_previous">Previous</string>
+    <string name="no_planned_outfits">No planned outfits</string>
+    <string name="review_proposal_title">Review AI Proposal</string>
+    <string name="review_proposal_sub">Select the outfits you want to save to your calendar.</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="save_selected_btn">Save Selected</string>
+    <string name="custom_garment_label">Custom Garment</string>
+    <string name="garment_label">Garment</string>
+
+    <!-- Suitcase Screen Step 1 & 2 -->
+    <string name="suitcase_screen_title">AI Suitcase</string>
+    <string name="step1_title">Step 1: Where are you going?</string>
+    <string name="trip_name_label">Trip Name / Destination</string>
+    <string name="trip_name_placeholder">e.g. Business in Madrid</string>
+    <string name="select_dates">Select dates</string>
+    <string name="luggage_type_label">Type of Luggage</string>
+    <string name="saved_plans_title">Saved Plans</string>
+    <string name="delete_plan_title">Delete Plan</string>
+    <string name="delete_plan_confirm">Are you sure you want to delete the plan \'%1$s\'? This action cannot be undone.</string>
+
+    <string name="step2_title">Step 2: Style &amp; Activities</string>
+    <string name="trip_style_prompt">What is the main style of the trip?</string>
+    <string name="special_event_prompt">Any special events?</string>
+    <string name="what_event_label">What event?</string>
+    <string name="event_placeholder">e.g. Concert, Wedding, etc.</string>
+
+    <!-- Suitcase Screen Step 3 -->
+    <string name="packing_suitcase_loading">We are packing your suitcase…</string>
+    <string name="completed_trip_summary">Summary of completed trip</string>
+    <string name="suitcase_ready_title">Suitcase Ready!</string>
+    <string name="from_your_wardrobe">From your wardrobe</string>
+    <string name="edit_mode">Edit Mode</string>
+    <string name="pack_suitcase">Pack Suitcase</string>
+    <string name="used_garments">Used garments</string>
+    <string name="in_laundry">In laundry</string>
+    <string name="change_btn">Change</string>
+    <string name="suggest_buying">We suggest bringing</string>
+    <string name="dont_forget_essentials">Don\'t forget the basics</string>
+    <string name="regenerate_btn">Regenerate</string>
+    <string name="trip_concluded_msg">This trip has concluded and been processed.</string>
+    <string name="all_set_prompt">All set?</string>
+    <string name="review_details_sub">Review the details before AI generates your perfect suitcase.</string>
+    <string name="destination_label">Destination</string>
+    <string name="period_label">Period</string>
+    <string name="dates_not_set">Dates not set</string>
+    <string name="selected_styles_label">Selected Styles</string>
+    <string name="special_events_label">Special Events</string>
+    <string name="generate_suitcase_btn">Generate AI Suitcase</string>
+    <string name="save_trip_plan_btn">Save Trip Plan</string>
+    <string name="change_garment_title">Change for another option</string>
+    <string name="ai_choose_for_me">Let AI choose for me</string>
+    <string name="suitcase_saved_success">Suitcase saved successfully</string>
+    <string name="ai_proposal_title">AI Proposal</string>
+    <string name="current_label">Current</string>
+    <string name="proposal_label">Proposal</string>
+    <string name="discard_btn">Discard</string>
+    <string name="no_other_garments_in_category">No other garments in this category.</string>
+    <string name="selected_label">Selected</string>
+
+    <!-- Planner & Laundry -->
+    <string name="planner_title">Future Planner</string>
+    <string name="laundry_title">Laundry</string>
+    <string name="mark_all_clean">Mark All as Clean</string>
+    <string name="empty_laundry">No items currently in laundry!</string>
+
+    <!-- Chat & History -->
+    <string name="chat_title">Style Consultations</string>
+    <string name="type_message_placeholder">Ask your AI stylist…</string>
+    <string name="history_title">Outfit History</string>
+    <string name="no_history">No outfits recorded for this date.</string>
+    <string name="delete_chat_history_title">Clear Chat History</string>
+    <string name="delete_chat_history_confirm">Are you sure you want to clear the conversation history? This action cannot be undone.</string>
+    <string name="send_btn">Send</string>
+    <string name="suggested_items_label">Suggested garments:</string>
+    <string name="chat_user_label">You</string>
+    <string name="chat_ai_label">AI Advisor</string>
+    <string name="ai_typing_indicator">The advisor is typing…</string>
+    <string name="chat_error">An error occurred while processing your query.</string>
+    <string name="non_garment_image_error">The selected photo does not appear to contain clothing, footwear, or fashion accessories.</string>
+    <string name="proposal_number_title">Proposal %1$d</string>
+    <string name="show_explanation_btn">See explanation</string>
+
+    <!-- History & Laundry Screens -->
+    <string name="outfit_worn_label">Outfit worn:</string>
+    <string name="show_details">Show details</string>
+    <string name="show_less">Show less</string>
+    <string name="style_explanation_label">Style explanation:</string>
+    <string name="mark_as_clean">Mark as clean</string>
+    <string name="pattern_prefix">Pattern: %1$s</string>
+    <string name="type_prefix">Type: %1$s</string>
+    <string name="style_prefix">Style: %1$s</string>
 </resources>

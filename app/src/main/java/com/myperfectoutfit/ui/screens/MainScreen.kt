@@ -41,7 +41,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.myperfectoutfit.ui.components.ImageFramingDialog
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
+import com.myperfectoutfit.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -251,7 +253,7 @@ fun MainScreen(
                                 onDismissRequest = { showMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Compartir Respaldo") },
+                                    text = { Text(stringResource(R.string.share_backup)) },
                                     leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
                                     onClick = {
                                         showMenu = false
@@ -259,7 +261,7 @@ fun MainScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Guardar en Carpeta") },
+                                    text = { Text(stringResource(R.string.save_to_folder)) },
                                     leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
                                     onClick = {
                                         showMenu = false
@@ -269,13 +271,13 @@ fun MainScreen(
                                                 tempBackupFile = file
                                                 createDocumentLauncher.launch("myperfectoutfit_backup_${System.currentTimeMillis()}.zip")
                                             } else {
-                                                Toast.makeText(context, "Error al crear respaldo.", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.backup_error), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Restaurar desde Archivo") },
+                                    text = { Text(stringResource(R.string.restore_from_file)) },
                                     leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
                                     onClick = {
                                         showMenu = false
@@ -295,8 +297,8 @@ fun MainScreen(
 
                 items.forEach { screen ->
                     NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
+                        icon = { Icon(screen.icon, contentDescription = stringResource(screen.titleRes)) },
+                        label = { Text(stringResource(screen.titleRes)) },
                         selected = currentRoute == screen.route,
                         onClick = {
                             navController.navigate(screen.route) {
@@ -398,11 +400,11 @@ fun EditProfileDialog(
     if (showSourceDialog) {
         AlertDialog(
             onDismissRequest = { showSourceDialog = false },
-            title = { Text("Seleccionar Imagen") },
+            title = { Text(stringResource(R.string.select_image_title)) },
             text = {
                 Column {
                     ListItem(
-                        headlineContent = { Text("Tomar Foto") },
+                        headlineContent = { Text(stringResource(R.string.btn_take_photo)) },
                         leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
                         modifier = Modifier.clickable {
                             showSourceDialog = false
@@ -410,7 +412,7 @@ fun EditProfileDialog(
                         }
                     )
                     ListItem(
-                        headlineContent = { Text("Elegir de Galería") },
+                        headlineContent = { Text(stringResource(R.string.btn_choose_gallery)) },
                         leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
                         modifier = Modifier.clickable {
                             showSourceDialog = false
@@ -421,7 +423,7 @@ fun EditProfileDialog(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showSourceDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showSourceDialog = false }) { Text(stringResource(R.string.btn_cancel)) }
             }
         )
     }
@@ -449,7 +451,7 @@ fun EditProfileDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Editar Perfil") },
+        title = { Text(stringResource(R.string.edit_profile_title)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -488,19 +490,19 @@ fun EditProfileDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(R.string.name_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Correo") },
+                    label = { Text(stringResource(R.string.email_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 HorizontalDivider()
 
-                Text(text = "Visualización de Categorías", style = MaterialTheme.typography.titleSmall)
+                Text(text = stringResource(R.string.display_mode_title), style = MaterialTheme.typography.titleSmall)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -511,9 +513,9 @@ fun EditProfileDialog(
                             onClick = { displayMode = mode },
                             label = { 
                                 Text(when(mode) {
-                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY -> "Texto"
-                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY -> "Iconos"
-                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH -> "Ambos"
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.TEXT_ONLY -> stringResource(R.string.display_mode_text)
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.ICON_ONLY -> stringResource(R.string.display_mode_icons)
+                                    com.myperfectoutfit.data.local.enums.CategoryDisplayMode.BOTH -> stringResource(R.string.display_mode_both)
                                 })
                             }
                         )
@@ -522,7 +524,7 @@ fun EditProfileDialog(
 
                 HorizontalDivider()
 
-                Text(text = "Categorías de Armario", style = MaterialTheme.typography.titleSmall)
+                Text(text = stringResource(R.string.active_categories_title), style = MaterialTheme.typography.titleSmall)
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -537,7 +539,7 @@ fun EditProfileDialog(
                                     activeCategories.add(category)
                                 }
                             },
-                            label = { Text(category.displayName) }
+                            label = { Text(stringResource(category.displayNameRes)) }
                         )
                     }
                 }
@@ -549,9 +551,9 @@ fun EditProfileDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Reglas de Estilo", style = MaterialTheme.typography.titleSmall)
+                    Text(text = stringResource(R.string.style_rules_title), style = MaterialTheme.typography.titleSmall)
                     IconButton(onClick = { showAddRuleDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Añadir Regla", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_rule_title), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
 
@@ -575,7 +577,7 @@ fun EditProfileDialog(
                                 Text(text = rule.description, style = MaterialTheme.typography.bodySmall)
                             }
                             IconButton(onClick = { onDeleteRule(rule) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.btn_delete), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -593,11 +595,11 @@ fun EditProfileDialog(
                 },
                 enabled = name.isNotBlank() && email.contains("@") && activeCategories.isNotEmpty()
             ) {
-                Text("Guardar")
+                Text(stringResource(R.string.btn_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
         }
     )
 }
@@ -612,20 +614,20 @@ fun AddStyleRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nueva Regla de Estilo") },
+        title = { Text(stringResource(R.string.add_rule_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Título") },
+                    label = { Text(stringResource(R.string.rule_title_label)) },
                     placeholder = { Text("Ej: Viernes Casual") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = desc,
                     onValueChange = { desc = it },
-                    label = { Text("Descripción") },
+                    label = { Text(stringResource(R.string.rule_desc_label)) },
                     placeholder = { Text("Ej: Sin corbata y usar jeans...") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -633,11 +635,11 @@ fun AddStyleRuleDialog(
         },
         confirmButton = {
             Button(onClick = { onSave(title, desc) }, enabled = title.isNotBlank() && desc.isNotBlank()) {
-                Text("Agregar")
+                Text(stringResource(R.string.btn_add))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
         }
     )
 }

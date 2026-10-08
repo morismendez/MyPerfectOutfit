@@ -68,8 +68,15 @@ class StyleChatViewModel @Inject constructor(
                         findItemInInventory(id, inventory)
                     }
 
+                    val rawText = entity.text.split("SUGGESTED_IDS:")[0].trim()
+                    val cleanedHistoryText = rawText
+                        .replace(Regex("""\(?\b(SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT|CUSTOM)_\d+\)?""", RegexOption.IGNORE_CASE), "")
+                        .replace(Regex("""\s\s+"""), " ")
+                        .replace(Regex("""\s+([,.;:])"""), "$1")
+                        .trim()
+
                     ChatMessage(
-                        text = entity.text.split("SUGGESTED_IDS:")[0].trim(),
+                        text = cleanedHistoryText,
                         isUser = entity.isUser,
                         imageUri = entity.imageUri?.toUri(),
                         suggestedItems = suggestedItems,
@@ -122,7 +129,10 @@ class StyleChatViewModel @Inject constructor(
     }
 
     private fun getWelcomeMessage() = ChatMessage(
-        text = "¡Hola! Soy tu asistente de estilo personal. ¿En qué puedo ayudarte hoy con tu armario o alguna combinación?",
+        text = if (java.util.Locale.getDefault().language == "es") 
+            "¡Hola! Soy tu asistente de estilo personal. ¿En qué puedo ayudarte hoy con tu armario o alguna combinación?"
+        else 
+            "Hello! I am your personal style assistant. How can I help you today with your wardrobe or outfit combinations?",
         isUser = false
     )
 
@@ -210,17 +220,31 @@ class StyleChatViewModel @Inject constructor(
                 // Parsear sugerencias
                 val parts = responseRaw.split("SUGGESTED_IDS:")
                 val responseCleanText = parts[0].trim()
-                val suggestedIds = if (parts.size > 1) {
+                
+                val suggestedIdsFromTag = if (parts.size > 1) {
                     parts[1].split(",").map { it.trim() }.filter { it.isNotBlank() }
                 } else emptyList()
 
+                // Extraer también cualquier ID que la IA haya mencionado directamente en el texto
+                val inlineIdsRegex = Regex("""\b(SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT|CUSTOM)_\d+\b""", RegexOption.IGNORE_CASE)
+                val inlineIds = inlineIdsRegex.findAll(responseCleanText).map { it.value.uppercase() }.toList()
+
+                val allSuggestedIds = (suggestedIdsFromTag + inlineIds).distinct()
+
+                // Limpiar del texto visible cualquier aparición de IDs como (SHIRT_2), [SHOE_1], SHIRT_2, etc.
+                val finalDisplayText = responseCleanText
+                    .replace(Regex("""\(?\b(SHIRT|PANT|SHOE|TIE|WATCH|FRAGRANCE|JACKET|BAG|DRESS|SKIRT|CUSTOM)_\d+\)?""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""\s\s+"""), " ")
+                    .replace(Regex("""\s+([,.;:])"""), "$1")
+                    .trim()
+
                 val inventoryList = inventory.values.flatten()
-                val suggestedItems = suggestedIds.mapNotNull { id ->
+                val suggestedItems = allSuggestedIds.mapNotNull { id ->
                     findItemInInventory(id, inventoryList)
                 }
 
                 val aiResponse = ChatMessage(
-                    text = responseCleanText, 
+                    text = finalDisplayText, 
                     isUser = false,
                     suggestedItems = suggestedItems
                 )
@@ -231,7 +255,7 @@ class StyleChatViewModel @Inject constructor(
                         userId = userId,
                         text = responseRaw,
                         isUser = false,
-                        suggestedGarmentIds = suggestedIds.joinToString(","),
+                        suggestedGarmentIds = allSuggestedIds.joinToString(","),
                         timestamp = aiResponse.timestamp
                     )
                 )
@@ -242,7 +266,10 @@ class StyleChatViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Ocurrió un error al procesar tu consulta."
+                        errorMessage = if (java.util.Locale.getDefault().language == "es") 
+                            "Ocurrió un error al procesar tu consulta."
+                        else 
+                            "An error occurred while processing your request."
                     ) 
                 }
             }

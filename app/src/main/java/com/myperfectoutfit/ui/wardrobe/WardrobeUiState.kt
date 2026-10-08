@@ -1,10 +1,12 @@
 package com.myperfectoutfit.ui.state
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.materialPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import com.myperfectoutfit.data.local.entities.*
 
 data class WardrobeUiState(
@@ -177,17 +179,34 @@ object CustomIcons {
     }
 }
 
-enum class CategoryFilter(val displayName: String, val icon: ImageVector) {
-    ALL("Todas", Icons.Default.GridView),
-    SHIRTS("Camisas", CustomIcons.Shirt),
-    PANTS("Pantalones", CustomIcons.Pants),
-    SHOES("Zapatos", CustomIcons.Shoes),
-    TIES("Corbatas", CustomIcons.Tie),
-    WATCHES("Relojes", Icons.Default.Watch),
-    JACKETS("Chaquetas", CustomIcons.Jacket),
-    FRAGRANCES("Fragancias", Icons.Default.AutoAwesome),
-    BAGS("Bolsos", Icons.Default.ShoppingBag),
-    DRESSES("Vestidos", CustomIcons.Dress),
-    SKIRTS("Faldas", CustomIcons.Skirt),
-    LAUNDRY("Lavandería", Icons.Default.LocalLaundryService)
+enum class CategoryFilter(@StringRes val displayNameRes: Int, val icon: ImageVector) {
+    ALL(R.string.cat_all, Icons.Default.GridView),
+    SHIRTS(R.string.cat_shirts, CustomIcons.Shirt),
+    PANTS(R.string.cat_pants, CustomIcons.Pants),
+    SHOES(R.string.cat_shoes, CustomIcons.Shoes),
+    TIES(R.string.cat_ties, CustomIcons.Tie),
+    WATCHES(R.string.cat_watches, Icons.Default.Watch),
+    JACKETS(R.string.cat_jackets, CustomIcons.Jacket),
+    FRAGRANCES(R.string.cat_fragrances, Icons.Default.AutoAwesome),
+    BAGS(R.string.cat_bags, Icons.Default.ShoppingBag),
+    DRESSES(R.string.cat_dresses, CustomIcons.Dress),
+    SKIRTS(R.string.cat_skirts, CustomIcons.Skirt),
+    LAUNDRY(R.string.cat_laundry, Icons.Default.LocalLaundryService)
+}
+
+fun getCategoryStringRes(key: String): Int {
+    return when (key.uppercase()) {
+        "SHIRT", "SHIRTS" -> R.string.cat_shirts
+        "PANT", "PANTS" -> R.string.cat_pants
+        "SHOE", "SHOES" -> R.string.cat_shoes
+        "JACKET", "JACKETS" -> R.string.cat_jackets
+        "DRESS", "DRESSES" -> R.string.cat_dresses
+        "SKIRT", "SKIRTS" -> R.string.cat_skirts
+        "TIE", "TIES" -> R.string.cat_ties
+        "BAG", "BAGS" -> R.string.cat_bags
+        "WATCH", "WATCHES" -> R.string.cat_watches
+        "FRAGRANCE", "FRAGRANCES" -> R.string.cat_fragrances
+        "LAUNDRY" -> R.string.cat_laundry
+        else -> R.string.cat_all
+    }
 }

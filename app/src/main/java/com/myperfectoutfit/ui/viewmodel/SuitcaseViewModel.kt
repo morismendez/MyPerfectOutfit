@@ -88,7 +88,40 @@ class SuitcaseViewModel @Inject constructor(
                 user?.let {
                     _uiState.update { it.copy(userId = user.id) }
                     loadSuitcases()
+                    observeInventory(user.id)
                 }
+            }
+        }
+    }
+
+    private fun observeInventory(userId: Long) {
+        viewModelScope.launch {
+            combine(
+                repository.getAllShirts(userId),
+                repository.getAllPants(userId),
+                repository.getAllShoes(userId),
+                repository.getAllJackets(userId),
+                repository.getAllDresses(userId),
+                repository.getAllSkirts(userId),
+                repository.getAllTies(userId),
+                repository.getAllBags(userId),
+                repository.getAllWatches(userId),
+                repository.getAllCustomGarments(userId)
+            ) { flows ->
+                mapOf(
+                    "SHIRT" to flows[0],
+                    "PANT" to flows[1],
+                    "SHOE" to flows[2],
+                    "JACKET" to flows[3],
+                    "DRESS" to flows[4],
+                    "SKIRT" to flows[5],
+                    "TIE" to flows[6],
+                    "BAG" to flows[7],
+                    "WATCH" to flows[8],
+                    "CUSTOM" to flows[9]
+                )
+            }.collect { inventoryMap ->
+                _uiState.update { it.copy(fullInventory = inventoryMap) }
             }
         }
     }
@@ -227,7 +260,7 @@ class SuitcaseViewModel @Inject constructor(
                 return@launch
             }
 
-            val tripContext = "VIAJE: ${state.tripName}, ESTILO: ${state.selectedStyles.joinToString { it.title }}"
+            val tripContext = "VIAJE: ${state.tripName}, ESTILO: ${state.selectedStyles.joinToString { it.name }}"
             val currentSuitcase = state.selectedGarments.joinToString { "${it.name} (${it.categoryDisplay})" }
             val alternativesStr = alternatives.joinToString("\n") { "ID:${it.id} - ${it.name}" }
 

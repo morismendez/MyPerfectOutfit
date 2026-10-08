@@ -14,7 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.ui.viewmodel.LaundryViewModel
@@ -46,21 +48,16 @@ fun LaundryScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "La lavandería está vacía",
+                    text = stringResource(R.string.empty_laundry),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Todas tus prendas están limpias y disponibles en el armario.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Botón alternativo si no hay TopAppBar dedicado
                 Button(onClick = { viewModel.markAllAsClean() }, enabled = !uiState.isEmpty) {
-                    Text("Marcar todo como limpio")
+                    Text(stringResource(R.string.mark_all_clean))
                 }
             }
         } else {
@@ -72,7 +69,7 @@ fun LaundryScreen(
                 ) {
                     Icon(Icons.Default.DoneAll, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Limpiar Todo")
+                    Text(stringResource(R.string.mark_all_clean))
                 }
 
                 LazyColumn(
@@ -85,7 +82,7 @@ fun LaundryScreen(
                     if (uiState.laundryShirts.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Camisas (${uiState.laundryShirts.size})",
+                                text = "${stringResource(R.string.cat_shirts)} (${uiState.laundryShirts.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -94,7 +91,7 @@ fun LaundryScreen(
                         items(uiState.laundryShirts, key = { "shirt_${it.id}" }) { shirt ->
                             LaundryItemCard(
                                 title = "${shirt.brand} - ${shirt.primaryColor}",
-                                subtitle = "Estampado: ${shirt.pattern}",
+                                subtitle = stringResource(R.string.pattern_prefix, shirt.pattern),
                                 imageUri = shirt.imageUrl,
                                 onMarkClean = { viewModel.markShirtClean(shirt.id) }
                             )
@@ -105,7 +102,7 @@ fun LaundryScreen(
                     if (uiState.laundryPants.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Pantalones (${uiState.laundryPants.size})",
+                                text = "${stringResource(R.string.cat_pants)} (${uiState.laundryPants.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -113,7 +110,7 @@ fun LaundryScreen(
                         }
                         items(uiState.laundryPants, key = { "pant_${it.id}" }) { pant ->
                             LaundryItemCard(
-                                title = "${pant.brand ?: "Pantalón"} - ${pant.primaryColor}",
+                                title = "${pant.brand ?: stringResource(R.string.cat_pants)} - ${pant.primaryColor}",
                                 subtitle = "${pant.subType} - ${pant.material}",
                                 imageUri = pant.imageUrl,
                                 onMarkClean = { viewModel.markPantClean(pant.id) }
@@ -125,7 +122,7 @@ fun LaundryScreen(
                     if (uiState.laundryTies.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Corbatas (${uiState.laundryTies.size})",
+                                text = "${stringResource(R.string.cat_ties)} (${uiState.laundryTies.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -133,8 +130,8 @@ fun LaundryScreen(
                         }
                         items(uiState.laundryTies, key = { "tie_${it.id}" }) { tie ->
                             LaundryItemCard(
-                                title = "Corbata ${tie.colorRange}",
-                                subtitle = "Diseño: ${tie.pattern}",
+                                title = "${stringResource(R.string.cat_ties)} ${tie.colorRange}",
+                                subtitle = stringResource(R.string.pattern_prefix, tie.pattern),
                                 imageUri = tie.imageUrl,
                                 onMarkClean = { viewModel.markTieClean(tie.id) }
                             )
@@ -145,7 +142,7 @@ fun LaundryScreen(
                     if (uiState.laundryJackets.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Chaquetas (${uiState.laundryJackets.size})",
+                                text = "${stringResource(R.string.cat_jackets)} (${uiState.laundryJackets.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -153,8 +150,8 @@ fun LaundryScreen(
                         }
                         items(uiState.laundryJackets, key = { "jacket_${it.id}" }) { jacket ->
                             LaundryItemCard(
-                                title = "${jacket.brand ?: "Chaqueta"} - ${jacket.color}",
-                                subtitle = "Tipo: ${jacket.type}",
+                                title = "${jacket.brand ?: stringResource(R.string.cat_jackets)} - ${jacket.color}",
+                                subtitle = stringResource(R.string.type_prefix, jacket.type),
                                 imageUri = jacket.imageUrl,
                                 onMarkClean = { viewModel.markJacketClean(jacket.id) }
                             )
@@ -165,7 +162,7 @@ fun LaundryScreen(
                     if (uiState.laundryDresses.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Vestidos (${uiState.laundryDresses.size})",
+                                text = "${stringResource(R.string.cat_dresses)} (${uiState.laundryDresses.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -173,8 +170,8 @@ fun LaundryScreen(
                         }
                         items(uiState.laundryDresses, key = { "dress_${it.id}" }) { dress ->
                             LaundryItemCard(
-                                title = "${dress.brand ?: "Vestido"} - ${dress.color}",
-                                subtitle = "Estilo: ${dress.length}",
+                                title = "${dress.brand ?: stringResource(R.string.cat_dresses)} - ${dress.color}",
+                                subtitle = stringResource(R.string.style_prefix, dress.length),
                                 imageUri = dress.imageUrl,
                                 onMarkClean = { viewModel.markDressClean(dress.id) }
                             )
@@ -185,7 +182,7 @@ fun LaundryScreen(
                     if (uiState.laundrySkirts.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Faldas (${uiState.laundrySkirts.size})",
+                                text = "${stringResource(R.string.cat_skirts)} (${uiState.laundrySkirts.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -193,8 +190,8 @@ fun LaundryScreen(
                         }
                         items(uiState.laundrySkirts, key = { "skirt_${it.id}" }) { skirt ->
                             LaundryItemCard(
-                                title = "${skirt.brand ?: "Falda"} - ${skirt.color}",
-                                subtitle = "Estilo: ${skirt.style}",
+                                title = "${skirt.brand ?: stringResource(R.string.cat_skirts)} - ${skirt.color}",
+                                subtitle = stringResource(R.string.style_prefix, skirt.style),
                                 imageUri = skirt.imageUrl,
                                 onMarkClean = { viewModel.markSkirtClean(skirt.id) }
                             )
@@ -205,7 +202,7 @@ fun LaundryScreen(
                     if (uiState.laundryCustomGarments.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Otros (${uiState.laundryCustomGarments.size})",
+                                text = "${stringResource(R.string.dropdown_other)} (${uiState.laundryCustomGarments.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -213,7 +210,7 @@ fun LaundryScreen(
                         }
                         items(uiState.laundryCustomGarments, key = { "custom_${it.id}" }) { garment ->
                             LaundryItemCard(
-                                title = garment.attributeValues.split("|").firstOrNull()?.split(":")?.getOrNull(1) ?: "Prenda",
+                                title = garment.attributeValues.split("|").firstOrNull()?.split(":")?.getOrNull(1) ?: stringResource(R.string.garment_label),
                                 subtitle = garment.attributeValues.replace("|", " - "),
                                 imageUri = garment.imageUrl,
                                 onMarkClean = { viewModel.markCustomGarmentClean(garment) }
@@ -270,7 +267,7 @@ private fun LaundryItemCard(
             IconButton(onClick = onMarkClean) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Marcar como limpia",
+                    contentDescription = stringResource(R.string.mark_as_clean),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

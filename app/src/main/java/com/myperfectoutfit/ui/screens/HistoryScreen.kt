@@ -14,8 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myperfectoutfit.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.myperfectoutfit.data.local.dao.HistoryWithDetails
@@ -91,7 +93,7 @@ fun HistoryScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sin registros para el ${uiState.selectedDate}",
+                        text = stringResource(R.string.no_history),
                         color = MaterialTheme.colorScheme.outline,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -126,7 +128,7 @@ fun HistoryItemCard(history: HistoryWithDetails, allCustoms: List<CustomGarmentE
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Outfit usado:",
+                    text = stringResource(R.string.outfit_worn_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -134,7 +136,7 @@ fun HistoryItemCard(history: HistoryWithDetails, allCustoms: List<CustomGarmentE
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Ver menos" else "Ver detalles"
+                        contentDescription = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_details)
                     )
                 }
             }
@@ -169,7 +171,7 @@ fun HistoryItemCard(history: HistoryWithDetails, allCustoms: List<CustomGarmentE
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Explicación del estilo:",
+                        text = stringResource(R.string.style_explanation_label),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.secondary
