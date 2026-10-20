@@ -2,9 +2,12 @@
 
 Tu Asesor de Imagen y Estilista Personal Inteligente impulsado por Azure OpenAI y Jetpack Compose
  ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)  ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-brightgreen.svg)  ![Android SDK](https://img.shields.io/badge/Android%20SDK-35-blue.svg)  ![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean-orange.svg)  ![Room Database](https://img.shields.io/badge/Database-Room%20v20-red.svg)  ![Azure OpenAI](https://img.shields.io/badge/AI%20Backend-Azure%20OpenAI%20%2B%20Firebase-lightgrey.svg) 
+
 📌 Descripción General
 My Perfect Outfit es una aplicación móvil nativa para Android diseñada para revolucionar la gestión del armario personal y la creación de outfits diarios. Combinando Jetpack Compose para una experiencia visual fluida y moderna, y el poder de Azure OpenAI (vía Firebase Cloud Functions), la aplicación actúa como un estilista personal de lujo que conoce el inventario exacto del usuario, sus hábitos de vestimenta, reglas de estilo y compromisos en el calendario.
+
 ✨ Funcionalidades Probadas y Validadas
+
 🛍️ 1. Armario Digital Inteligente
 •
 Categorización Completa: Organización de Prendas Superiores (Camisas/Tops), Inferiores (Pantalones), Calzado, Chaquetas/Abrigos, Bolsos/Carteras, Vestidos, Faldas, Corbatas, Relojes y Fragancias.
