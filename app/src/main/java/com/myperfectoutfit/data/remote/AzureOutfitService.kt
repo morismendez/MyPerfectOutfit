@@ -5,7 +5,6 @@ import android.util.Base64
 import android.util.Log
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.functions.FirebaseFunctionsException
 import com.myperfectoutfit.data.local.entities.*
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
@@ -187,10 +186,6 @@ class AzureOutfitService @Inject constructor() {
             
             if (cleaned.isBlank()) "Error: Respuesta de IA vacía" else cleaned
 
-        } catch (e: FirebaseFunctionsException) {
-            val errorMsg = "Functions Error: ${e.code} - ${e.message}"
-            Log.e("AzureOutfitService", errorMsg, e)
-            errorMsg
         } catch (e: Exception) {
             val errorMsg = "General Error: ${e.localizedMessage ?: e.message}"
             Log.e("AzureOutfitService", errorMsg, e)

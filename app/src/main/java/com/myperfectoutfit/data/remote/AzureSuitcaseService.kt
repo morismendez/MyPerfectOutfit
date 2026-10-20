@@ -4,7 +4,6 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.myperfectoutfit.data.local.entities.*
 import kotlinx.coroutines.tasks.await
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 

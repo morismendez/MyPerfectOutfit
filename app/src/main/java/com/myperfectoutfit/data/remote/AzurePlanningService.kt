@@ -87,7 +87,7 @@ class AzurePlanningService @Inject constructor() {
 
         return try {
             val result = functions
-                .getHttpsCallable("getOutfitRecommendation") // Reutilizamos la función genérica si es posible o una nueva
+                .getHttpsCallable("getOutfitRecommendation")
                 .call(data)
                 .await()
             
