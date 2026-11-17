@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "313474488013",
+    "project_id": "myperfectoutfit",
+    "storage_bucket": "myperfectoutfit.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:313474488013:android:fe9baba0e5c39d5f247b84",
+        "android_client_info": {
+          "package_name": "com.myperfectoutfit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXSDTRYsrPsn6iFVGZSMn3ZaIZ_vqd-ic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
